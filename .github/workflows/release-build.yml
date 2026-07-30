@@ -46,7 +46,16 @@ jobs:
       - name: Create google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON não configurado (ou vazio) no repositório. Gere com: base64 -w0 android/app/google-services.json — e cadastre em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          if ! python3 -c "import json,sys; json.load(open('android/app/google-services.json'))" 2>/dev/null; then
+            echo "::error::android/app/google-services.json gerado é inválido — confira se o secret contém o conteúdo em base64 do arquivo (base64 -w0 android/app/google-services.json), e não o JSON puro."
+            exit 1
+          fi
 
       - run: flutter pub get
 
@@ -59,96 +68,6 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-
-  ios:
-    name: Build iOS (sem assinatura)
-    runs-on: macos-latest
-    env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
-          restore-keys: ${{ runner.os }}-pub-
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/CocoaPods
-            ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: ${{ runner.os }}-pods-
-
-      - run: flutter pub get
-
-      # Sem certificado de assinatura configurado no repositório: gera o
-      # .app não assinado. Para publicar na App Store, assine em um passo
-      # separado com os secrets de certificado/provisioning profile.
-      - run: flutter build ios --release --no-codesign
-
-      - name: Compactar build iOS
-        run: |
-          cd build/ios/iphoneos
-          zip -r -X Runner.app.zip Runner.app
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ios-release-unsigned
-          path: build/ios/iphoneos/Runner.app.zip
-          if-no-files-found: error
-
-  macos:
-    name: Build macOS
-    runs-on: macos-latest
-    env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
-          restore-keys: ${{ runner.os }}-pub-
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/CocoaPods
-            macos/Pods
-          key: ${{ runner.os }}-pods-macos-${{ hashFiles('macos/Podfile.lock') }}
-          restore-keys: ${{ runner.os }}-pods-macos-
-
-      - run: flutter pub get
-      - run: flutter build macos --release
-
-      - name: Compactar build macOS
-        run: |
-          cd build/macos/Build/Products/Release
-          zip -r -X motogest-macos.zip *.app
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-release
-          path: build/macos/Build/Products/Release/motogest-macos.zip
           if-no-files-found: error
 
   linux:
@@ -215,6 +134,25 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows --release
 
+      - name: Empacotar DLLs do VC++ Redistributable
+        # flutter_windows.dll (do engine do Flutter) depende do runtime do
+        # Visual C++ (msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll).
+        # Sem isso, quem baixar o build precisa instalar o VC++
+        # Redistributable manualmente para o app abrir. O runner do GitHub
+        # Actions já tem essas DLLs (vêm com o Visual Studio Build Tools),
+        # então copiamos para o lado do .exe e o app fica autocontido.
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" `
+            -Recurse -Filter "msvcp140.dll" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "\\x64\\" } |
+            Select-Object -First 1
+          if (-not $dll) { throw "msvcp140.dll não encontrada no runner." }
+          $redistDir = $dll.DirectoryName
+          Write-Host "Redistributable encontrado em: $redistDir"
+          Copy-Item "$redistDir\msvcp140*.dll" -Destination build\windows\x64\runner\Release\
+          Copy-Item "$redistDir\vcruntime140*.dll" -Destination build\windows\x64\runner\Release\
+
       - name: Compactar build Windows
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath motogest-windows.zip
 
@@ -260,7 +198,7 @@ jobs:
 
   release:
     name: Publicar GitHub Release
-    needs: [android, ios, macos, linux, windows, web]
+    needs: [android, linux, windows, web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -272,8 +210,6 @@ jobs:
         with:
           files: |
             artifacts/android-release/**
-            artifacts/ios-release-unsigned/**
-            artifacts/macos-release/**
             artifacts/linux-release/**
             artifacts/windows-release/**
             artifacts/web-release/**
