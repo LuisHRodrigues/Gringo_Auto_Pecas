@@ -1,0 +1,28 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "gringomotopecas-c285e",
+          "appId": "1:124752008886:android:a3647187c64b25006ff817",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "gringomotopecas-c285e",
+          "configurations": {
+            "android": "1:124752008886:android:a3647187c64b25006ff817",
+            "ios": "1:124752008886:ios:1115638a24307c906ff817",
+            "web": "1:124752008886:web:054181441bcbd1a06ff817",
+            "windows": "1:124752008886:web:054181441bcbd1a06ff817"
+          }
+        }
+      }
+    }
+  }
+}

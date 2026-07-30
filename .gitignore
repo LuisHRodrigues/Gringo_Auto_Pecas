@@ -1,0 +1,50 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+coverage/
+migrate_working_dir/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Android
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+
+# iOS / macOS (Xcode + CocoaPods gerados; ephemeral e Pods já são
+# ignorados pelos .gitignore de ios/ e macos/)
+**/xcuserdata/
+**/DerivedData/
+
+# Linux / Windows (ephemeral já ignorado pelos .gitignore de linux/ e windows/)
+
+# Segredos e configs de plataforma geradas pelo Firebase CLI/FlutterFire.
+# Devem ser injetados no CI via secrets, não commitados.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Assinatura de release do Android — nunca commitar.
+android/key.properties
+*.jks
+*.keystore

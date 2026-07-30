@@ -1,0 +1,280 @@
+name: Release Build
+
+# Builds só rodam quando uma tag de release é enviada (ex: v1.2.0).
+# Pushes/PRs comuns não disparam este workflow.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # necessário para anexar os artefatos ao GitHub Release
+
+env:
+  FLUTTER_CHANNEL: stable
+
+jobs:
+  android:
+    name: Build Android (apk + aab)
+    runs-on: ubuntu-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Create google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+
+      - run: flutter pub get
+
+      - run: flutter build apk --release
+      - run: flutter build appbundle --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+  ios:
+    name: Build iOS (sem assinatura)
+    runs-on: macos-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-
+
+      - run: flutter pub get
+
+      # Sem certificado de assinatura configurado no repositório: gera o
+      # .app não assinado. Para publicar na App Store, assine em um passo
+      # separado com os secrets de certificado/provisioning profile.
+      - run: flutter build ios --release --no-codesign
+
+      - name: Compactar build iOS
+        run: |
+          cd build/ios/iphoneos
+          zip -r -X Runner.app.zip Runner.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-unsigned
+          path: build/ios/iphoneos/Runner.app.zip
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS
+    runs-on: macos-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            macos/Pods
+          key: ${{ runner.os }}-pods-macos-${{ hashFiles('macos/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-macos-
+
+      - run: flutter pub get
+      - run: flutter build macos --release
+
+      - name: Compactar build macOS
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r -X motogest-macos.zip *.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: build/macos/Build/Products/Release/motogest-macos.zip
+          if-no-files-found: error
+
+  linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependências do Linux desktop
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev clang cmake pkg-config liblzma-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux --release
+
+      - name: Compactar build Linux
+        run: |
+          cd build/linux/x64/release/bundle
+          zip -r -X ${{ github.workspace }}/motogest-linux.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: motogest-linux.zip
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}\.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - run: flutter config --enable-windows-desktop
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      - name: Compactar build Windows
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath motogest-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: motogest-windows.zip
+          if-no-files-found: error
+
+  web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - run: flutter pub get
+      - run: flutter build web --release
+
+      - name: Compactar build Web
+        run: |
+          cd build/web
+          zip -r -X ${{ github.workspace }}/motogest-web.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: motogest-web.zip
+          if-no-files-found: error
+
+  release:
+    name: Publicar GitHub Release
+    needs: [android, ios, macos, linux, windows, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Criar/atualizar release e anexar artefatos
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/android-release/**
+            artifacts/ios-release-unsigned/**
+            artifacts/macos-release/**
+            artifacts/linux-release/**
+            artifacts/windows-release/**
+            artifacts/web-release/**
+          generate_release_notes: true

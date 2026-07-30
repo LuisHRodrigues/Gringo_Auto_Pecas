@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// MotoGest — oficina única (dados compartilhados entre os usuários logados).
+// Qualquer usuário autenticado pode ler/escrever os dados operacionais.
+// O perfil em /users só pode ser escrito pelo próprio dono.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /parts/{id} {
+      allow read, write: if signedIn();
+    }
+    match /serviceOrders/{id} {
+      allow read, write: if signedIn();
+    }
+    match /employees/{id} {
+      allow read, write: if signedIn();
+    }
+    match /stores/{id} {
+      allow read, write: if signedIn();
+    }
+    match /transactions/{id} {
+      allow read, write: if signedIn();
+    }
+    match /categories/{id} {
+      allow read, write: if signedIn();
+    }
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
