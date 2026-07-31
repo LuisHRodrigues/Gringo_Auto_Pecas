@@ -11,19 +11,10 @@ import '../models/models.dart';
 /// a UI é atualizada pelos listeners de snapshot, que mantêm os caches locais
 /// e chamam [notifyListeners].
 class DataProvider extends ChangeNotifier {
-  DataProvider() {
-    _ensureDefaultStore();
-    _listenParts();
-    _listenOrders();
-    _listenEmployees();
-    _listenStores();
-    _listenTransactions();
-    _listenCategories();
-  }
-
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   final List<StreamSubscription> _subs = [];
+  String? _currentUid;
 
   List<MotorcyclePart> _parts = [];
   List<ServiceOrder> _orders = [];
@@ -52,11 +43,53 @@ class DataProvider extends ChangeNotifier {
   CollectionReference<Map<String, dynamic>> get _categoriesRef =>
       _db.collection('categories');
 
-  @override
-  void dispose() {
+  /// Deve ser chamado sempre que o usuário autenticado mudar (login, logout
+  /// ou troca de conta). Um listener de `snapshots()` que recebe
+  /// permission-denied (ex.: os listeners chegam a ser criados antes do
+  /// login terminar, ou o usuário deslogou) não se recupera sozinho quando a
+  /// permissão volta a ficar válida — por isso os listeners precisam ser
+  /// cancelados e recriados do zero a cada troca de usuário, em vez de serem
+  /// criados uma única vez no construtor.
+  void syncWithAuth(String? uid) {
+    if (uid == _currentUid) return;
+    _currentUid = uid;
+    _stopListening();
+    _clearLocalState();
+    if (uid != null) {
+      _ensureDefaultStore();
+      _startListening();
+    }
+    notifyListeners();
+  }
+
+  void _startListening() {
+    _listenParts();
+    _listenOrders();
+    _listenEmployees();
+    _listenStores();
+    _listenTransactions();
+    _listenCategories();
+  }
+
+  void _stopListening() {
     for (final s in _subs) {
       s.cancel();
     }
+    _subs.clear();
+  }
+
+  void _clearLocalState() {
+    _parts = [];
+    _orders = [];
+    _employees = [];
+    _stores = [];
+    _categories = [];
+    _transactionsByStore.clear();
+  }
+
+  @override
+  void dispose() {
+    _stopListening();
     super.dispose();
   }
 

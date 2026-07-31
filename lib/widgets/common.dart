@@ -16,6 +16,35 @@ String formatDateTime(String iso) {
   return DateFormat('dd/MM/yyyy HH:mm').format(d);
 }
 
+/// Igual ao [showDialog] padrão, mas com uma transição de entrada/saída mais
+/// suave e deliberada (fade + leve escala), no lugar da transição abrupta.
+Future<T?> showAppDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  Color barrierColor = Colors.black54,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: barrierColor,
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (ctx, animation, secondaryAnimation) => builder(ctx),
+    transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+      final curved =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 /// Executa uma escrita assíncrona (Firestore) e mostra um SnackBar de erro
 /// caso ela falhe, em vez de deixar a falha desaparecer silenciosamente.
 /// Retorna `true` em caso de sucesso, para o chamador decidir se ainda mostra
@@ -42,7 +71,7 @@ Future<bool> runGuarded(
   }
 }
 
-enum BadgeVariant { primary, secondary, outline, destructive, success }
+enum BadgeVariant { primary, secondary, outline, destructive, success, warning }
 
 /// Equivalente ao componente Badge do shadcn/ui.
 class AppBadge extends StatelessWidget {
@@ -83,6 +112,10 @@ class AppBadge extends StatelessWidget {
         break;
       case BadgeVariant.success:
         bg = AppColors.green600;
+        fg = Colors.white;
+        break;
+      case BadgeVariant.warning:
+        bg = AppColors.yellow600;
         fg = Colors.white;
         break;
     }

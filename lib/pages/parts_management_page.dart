@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/auth_provider.dart';
 import '../services/data_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_formatters.dart';
 import '../widgets/common.dart';
 
 const partCategories = [
@@ -96,7 +98,7 @@ class _PartsManagementPageState extends State<PartsManagementPage> {
   }
 
   Future<void> _openForm({MotorcyclePart? editing}) async {
-    final result = await showDialog<MotorcyclePart>(
+    final result = await showAppDialog<MotorcyclePart>(
       context: context,
       builder: (_) => _PartFormDialog(editing: editing),
     );
@@ -170,8 +172,8 @@ class _PartsTable extends StatelessWidget {
 
   BadgeVariant _stockVariant(int q) {
     if (q == 0) return BadgeVariant.destructive;
-    if (q <= 5) return BadgeVariant.outline;
-    return BadgeVariant.primary;
+    if (q <= 5) return BadgeVariant.warning;
+    return BadgeVariant.success;
   }
 
   @override
@@ -253,8 +255,10 @@ class _PartFormDialogState extends State<_PartFormDialog> {
   late final _code = TextEditingController(text: widget.editing?.code ?? '');
   late final _name = TextEditingController(text: widget.editing?.name ?? '');
   late final _brand = TextEditingController(text: widget.editing?.brand ?? '');
-  late final _price =
-      TextEditingController(text: widget.editing?.price.toString() ?? '');
+  late final _price = TextEditingController(
+      text: widget.editing != null
+          ? formatCurrencyInput(widget.editing!.price)
+          : '');
   late final _stock =
       TextEditingController(text: widget.editing?.stock.toString() ?? '');
   late final _desc =
@@ -280,7 +284,7 @@ class _PartFormDialogState extends State<_PartFormDialog> {
       name: _name.text,
       category: _category!,
       brand: _brand.text,
-      price: double.tryParse(_price.text.replaceAll(',', '.')) ?? 0,
+      price: parseCurrencyInput(_price.text),
       stock: int.tryParse(_stock.text) ?? 0,
       description: _desc.text.isEmpty ? null : _desc.text,
       barcode: editing?.barcode,
@@ -349,11 +353,12 @@ class _PartFormDialogState extends State<_PartFormDialog> {
                   const SizedBox(width: 16),
                   Expanded(
                       child: _input(_price, 'Preço (R\$) *',
-                          hint: '0.00', number: true)),
+                          hint: 'R\$ 0,00',
+                          numeric: NumericFieldType.currency)),
                 ]),
                 const SizedBox(height: 16),
                 _input(_stock, 'Quantidade em Estoque *',
-                    hint: '0', number: true),
+                    hint: '0', numeric: NumericFieldType.integer),
                 const SizedBox(height: 16),
                 _input(_desc, 'Descrição',
                     hint: 'Informações adicionais sobre a peça...',
@@ -377,7 +382,7 @@ class _PartFormDialogState extends State<_PartFormDialog> {
 
   Widget _input(TextEditingController c, String label,
       {String? hint,
-      bool number = false,
+      NumericFieldType? numeric,
       int maxLines = 1,
       bool required = true}) {
     return Column(
@@ -389,9 +394,17 @@ class _PartFormDialogState extends State<_PartFormDialog> {
         TextFormField(
           controller: c,
           maxLines: maxLines,
-          keyboardType: number
-              ? const TextInputType.numberWithOptions(decimal: true)
+          keyboardType: numeric != null
+              ? TextInputType.numberWithOptions(
+                  decimal: numeric == NumericFieldType.currency)
               : null,
+          inputFormatters: switch (numeric) {
+            NumericFieldType.integer => [
+                FilteringTextInputFormatter.digitsOnly
+              ],
+            NumericFieldType.currency => [CurrencyInputFormatter()],
+            null => null,
+          },
           decoration: InputDecoration(hintText: hint),
           validator: required
               ? (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null

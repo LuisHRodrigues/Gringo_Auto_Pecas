@@ -42,7 +42,25 @@ class AuthProvider extends ChangeNotifier {
       // para não criar um NetworkImage('') inválido.
       avatar: (u.photoURL?.isNotEmpty ?? false) ? u.photoURL : null,
       provider: isGoogle ? 'google' : 'email',
+      // Contas Google já vêm com o email verificado pelo próprio provedor.
+      emailVerified: isGoogle || u.emailVerified,
     );
+  }
+
+  /// Reenvia o email de verificação para o usuário logado atualmente.
+  Future<void> sendEmailVerification() async {
+    await _auth.currentUser?.sendEmailVerification();
+  }
+
+  /// Recarrega o usuário atual do Firebase (ex.: para checar se ele já
+  /// confirmou o email em outra aba/dispositivo) e atualiza o estado local.
+  Future<void> reloadUser() async {
+    await _auth.currentUser?.reload();
+    final refreshed = _auth.currentUser;
+    if (refreshed != null) {
+      _user = _mapUser(refreshed);
+      notifyListeners();
+    }
   }
 
   /// Lança [Exception] com mensagem em português, como no original.
@@ -64,6 +82,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
       );
       await cred.user?.updateDisplayName(name);
+      await cred.user?.sendEmailVerification();
       await cred.user?.reload();
       // Atualiza imediatamente o estado local com o nome (o reload acima nem
       // sempre dispara um novo evento de authStateChanges).

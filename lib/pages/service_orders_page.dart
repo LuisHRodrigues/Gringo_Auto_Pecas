@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/auth_provider.dart';
 import '../services/data_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_formatters.dart';
 import '../widgets/common.dart';
 import 'parts_management_page.dart'
     show statsGridShared, actionsBarShared, emptyStateShared;
@@ -58,7 +60,7 @@ Widget photoImage(String src, {BoxFit fit = BoxFit.cover}) {
 
 /// Abre a foto em tela cheia, com zoom/pan (pinça ou scroll) e botão de fechar.
 void showPhotoViewer(BuildContext context, String src) {
-  showDialog(
+  showAppDialog(
     context: context,
     barrierColor: Colors.black87,
     builder: (ctx) => Dialog(
@@ -250,7 +252,7 @@ class _ServiceOrdersPageState extends State<ServiceOrdersPage> {
   }
 
   Future<void> _openForm({ServiceOrder? editing}) async {
-    final result = await showDialog<ServiceOrder>(
+    final result = await showAppDialog<ServiceOrder>(
       context: context,
       builder: (_) => _OrderFormDialog(editing: editing),
     );
@@ -266,7 +268,8 @@ class _ServiceOrdersPageState extends State<ServiceOrdersPage> {
   }
 
   void _openDetails(ServiceOrder o) {
-    showDialog(context: context, builder: (_) => _OrderDetailsDialog(order: o));
+    showAppDialog(
+        context: context, builder: (_) => _OrderDetailsDialog(order: o));
   }
 }
 
@@ -297,10 +300,10 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
   late final _problem =
       TextEditingController(text: widget.editing?.problem ?? '');
   late String? _mechanicId = widget.editing?.mechanicId;
-  late final _labor =
-      TextEditingController(text: widget.editing?.laborCost.toString() ?? '0');
-  late final _total =
-      TextEditingController(text: widget.editing?.totalCost.toString() ?? '0');
+  late final _labor = TextEditingController(
+      text: formatCurrencyInput(widget.editing?.laborCost ?? 0));
+  late final _total = TextEditingController(
+      text: formatCurrencyInput(widget.editing?.totalCost ?? 0));
   late String _status = widget.editing?.status ?? 'pending';
   late List<String> _photos = List.of(widget.editing?.photos ?? const []);
 
@@ -372,8 +375,8 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
       mechanicName: mechanicName,
       photos: _photos,
       partsUsed: editing?.partsUsed ?? const [],
-      laborCost: double.tryParse(_labor.text.replaceAll(',', '.')) ?? 0,
-      totalCost: double.tryParse(_total.text.replaceAll(',', '.')) ?? 0,
+      laborCost: parseCurrencyInput(_labor.text),
+      totalCost: parseCurrencyInput(_total.text),
       createdBy: editing?.createdBy ??
           Creator(id: auth.id, name: auth.name, email: auth.email),
       createdAt: editing?.createdAt ?? DateTime.now().toIso8601String(),
@@ -417,7 +420,8 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
                 _input(_customerName, 'Nome do Cliente *',
                     hint: 'Nome completo'),
                 const SizedBox(height: 16),
-                _input(_customerPhone, 'Telefone *', hint: '(00) 00000-0000'),
+                _input(_customerPhone, 'Telefone *',
+                    hint: '(00) 00000-0000', formatters: [phoneInputFormatter]),
                 _section('Dados da Moto'),
                 Row(children: [
                   Expanded(child: _input(_brand, 'Marca *', hint: 'Ex: Honda')),
@@ -438,12 +442,12 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(
-                      child:
-                          _input(_labor, 'Mão de Obra (R\$) *', number: true)),
+                      child: _input(_labor, 'Mão de Obra (R\$) *',
+                          numeric: NumericFieldType.currency)),
                   const SizedBox(width: 16),
                   Expanded(
-                      child:
-                          _input(_total, 'Valor Total (R\$) *', number: true)),
+                      child: _input(_total, 'Valor Total (R\$) *',
+                          numeric: NumericFieldType.currency)),
                 ]),
               ],
             ),
@@ -610,7 +614,8 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
 
   Widget _input(TextEditingController c, String label,
       {String? hint,
-      bool number = false,
+      NumericFieldType? numeric,
+      List<TextInputFormatter>? formatters,
       int maxLines = 1,
       bool enabled = true}) {
     return Column(
@@ -623,9 +628,18 @@ class _OrderFormDialogState extends State<_OrderFormDialog> {
           controller: c,
           enabled: enabled,
           maxLines: maxLines,
-          keyboardType: number
-              ? const TextInputType.numberWithOptions(decimal: true)
-              : null,
+          keyboardType: numeric != null
+              ? TextInputType.numberWithOptions(
+                  decimal: numeric == NumericFieldType.currency)
+              : (formatters != null ? TextInputType.phone : null),
+          inputFormatters: formatters ??
+              switch (numeric) {
+                NumericFieldType.integer => [
+                    FilteringTextInputFormatter.digitsOnly
+                  ],
+                NumericFieldType.currency => [CurrencyInputFormatter()],
+                null => null,
+              },
           decoration: InputDecoration(hintText: hint),
           validator: enabled
               ? (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null

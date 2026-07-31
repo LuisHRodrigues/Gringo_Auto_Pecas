@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -7,6 +8,7 @@ import 'services/data_provider.dart';
 import 'theme/app_theme.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
+import 'pages/verify_email_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,12 +26,26 @@ class MotoGestApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => DataProvider()),
+        // O DataProvider reinicia os listeners do Firestore sempre que o
+        // usuário autenticado muda (login/logout/troca de conta) — ver
+        // syncWithAuth em data_provider.dart.
+        ChangeNotifierProxyProvider<AuthProvider, DataProvider>(
+          create: (_) => DataProvider(),
+          update: (_, auth, data) =>
+              (data ?? DataProvider())..syncWithAuth(auth.user?.id),
+        ),
       ],
       child: MaterialApp(
         title: 'MotoGest',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const [Locale('pt', 'BR')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: const _Root(),
       ),
     );
@@ -48,6 +64,10 @@ class _Root extends StatelessWidget {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return auth.isLoggedIn ? const HomePage() : const LoginPage();
+    if (!auth.isLoggedIn) return const LoginPage();
+    // Contas por email/senha precisam confirmar o email antes de acessar os
+    // dados; contas Google já chegam verificadas pelo próprio provedor.
+    if (!auth.user!.emailVerified) return const VerifyEmailPage();
+    return const HomePage();
   }
 }

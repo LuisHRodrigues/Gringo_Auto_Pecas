@@ -16,20 +16,38 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _index = 0;
 
+  static const _pages = [
+    PartsManagementPage(),
+    ServiceOrdersPage(),
+    EmployeesPage(),
+    SearchPartsPage(),
+    FinancesPage(),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final pages = const [
-      PartsManagementPage(),
-      ServiceOrdersPage(),
-      EmployeesPage(),
-      SearchPartsPage(),
-      FinancesPage(),
-    ];
-
     return AppShell(
       currentIndex: _index,
       onNavigate: (i) => setState(() => _index = i),
-      child: IndexedStack(index: _index, children: pages),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.02),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(_index),
+          child: _pages[_index],
+        ),
+      ),
     );
   }
 }

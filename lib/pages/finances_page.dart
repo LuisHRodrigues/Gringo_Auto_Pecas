@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/data_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_formatters.dart';
 import '../widgets/common.dart';
 
 /// Porte de src/app/pages/finances.tsx.
@@ -345,7 +346,7 @@ class _FinancesPageState extends State<FinancesPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   void _openAddTransaction() {
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (_) => _TransactionDialog(
         storeId: _activeStore,
@@ -363,14 +364,14 @@ class _FinancesPageState extends State<FinancesPage> {
   }
 
   void _openCategories() {
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (_) => _CategoryManagerDialog(storeId: _activeStore),
     );
   }
 
   void _openAddStore() {
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (_) => _StoreDialog(
         onSubmit: (s) async {
@@ -1011,23 +1012,36 @@ class _RecentTransactions extends StatelessWidget {
 // Diálogo: adicionar transação
 // ---------------------------------------------------------------------------
 
-// Categorias padrão (valor, rótulo), disponíveis em todas as lojas.
-const _kEntradaCats = [
+// Categorias padrão (valor, rótulo). As de Peças só fazem sentido na loja
+// principal (oficina) — lojas novas não devem vir com elas.
+const _kEntradaCatsCommon = [
   ['Serviços', 'Serviços'],
-  ['Peças', 'Venda de Peças'],
   ['Produtos', 'Venda de Produtos'],
   ['Outros', 'Outros'],
 ];
-const _kSaidaCats = [
-  ['Peças', 'Compra de Peças'],
+const _kEntradaCatsOficina = ['Peças', 'Venda de Peças'];
+
+const _kSaidaCatsCommon = [
   ['Produtos', 'Compra de Produtos'],
   ['Funcionários', 'Funcionários'],
   ['Infraestrutura', 'Infraestrutura'],
   ['Outros', 'Outros'],
 ];
+const _kSaidaCatsOficina = ['Peças', 'Compra de Peças'];
 
-List<List<String>> _defaultCatsFor(String type) =>
-    type == 'entrada' ? _kEntradaCats : _kSaidaCats;
+List<List<String>> _defaultCatsFor(String type, String storeId) {
+  final isOficina = storeId == 'motogest';
+  if (type == 'entrada') {
+    return [
+      if (isOficina) _kEntradaCatsOficina,
+      ..._kEntradaCatsCommon,
+    ];
+  }
+  return [
+    if (isOficina) _kSaidaCatsOficina,
+    ..._kSaidaCatsCommon,
+  ];
+}
 
 class _TransactionDialog extends StatefulWidget {
   const _TransactionDialog({required this.storeId, required this.onSubmit});
@@ -1064,7 +1078,7 @@ class _TransactionDialogState extends State<_TransactionDialog> {
           .showSnackBar(const SnackBar(content: Text('Preencha a descrição')));
       return;
     }
-    final value = double.tryParse(_amount.text.replaceAll(',', '.')) ?? 0;
+    final value = parseCurrencyInput(_amount.text);
     if (value <= 0) {
       messenger.showSnackBar(
           const SnackBar(content: Text('Informe um valor válido')));
@@ -1087,7 +1101,7 @@ class _TransactionDialogState extends State<_TransactionDialog> {
   /// Abre o gerenciador de categorias já no tipo atual; a categoria criada
   /// é selecionada automaticamente neste diálogo.
   Future<void> _openCategoryManager() async {
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       builder: (_) => _CategoryManagerDialog(
         storeId: widget.storeId,
@@ -1103,7 +1117,7 @@ class _TransactionDialogState extends State<_TransactionDialog> {
   /// Itens do dropdown: categorias padrão + personalizadas da loja (sem
   /// duplicar valores). Mantém o nome do valor já selecionado válido.
   List<DropdownMenuItem<String>> _categoryItems(List<FinanceCategory> custom) {
-    final defaults = _defaultCatsFor(_type);
+    final defaults = _defaultCatsFor(_type, widget.storeId);
     final seen = <String>{};
     final items = <DropdownMenuItem<String>>[];
     void add(String value, String label) {
@@ -1212,7 +1226,8 @@ class _TransactionDialogState extends State<_TransactionDialog> {
                 controller: _amount,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(hintText: '0,00'),
+                inputFormatters: [CurrencyInputFormatter()],
+                decoration: const InputDecoration(hintText: 'R\$ 0,00'),
               ),
               const SizedBox(height: 12),
               const Text('Data', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -1399,8 +1414,8 @@ class _CategoryManagerDialogState extends State<_CategoryManagerDialog> {
 
   bool _isDuplicate(String name, {String? exceptId}) {
     final lower = name.toLowerCase();
-    final inDefaults =
-        _defaultCatsFor(_type).any((c) => c[0].toLowerCase() == lower);
+    final inDefaults = _defaultCatsFor(_type, widget.storeId)
+        .any((c) => c[0].toLowerCase() == lower);
     final inCustom = context
         .read<DataProvider>()
         .customCategoriesFor(widget.storeId, _type)
@@ -1431,7 +1446,7 @@ class _CategoryManagerDialogState extends State<_CategoryManagerDialog> {
     final controller = TextEditingController(text: c.name);
     final messenger = ScaffoldMessenger.of(context);
     final data = context.read<DataProvider>();
-    final newName = await showDialog<String>(
+    final newName = await showAppDialog<String>(
       context: context,
       builder: (ctx) {
         String? err;

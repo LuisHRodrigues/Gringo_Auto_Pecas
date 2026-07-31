@@ -55,7 +55,18 @@ class _LoginPageState extends State<LoginPage>
     }
   }
 
+  static final _emailRegex =
+      RegExp(r'^[\w.!#$%&*+/=?^`{|}~-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$');
+
   Future<void> _doSignup() async {
+    if (_signName.text.trim().isEmpty) {
+      _toast('Informe seu nome', error: true);
+      return;
+    }
+    if (!_emailRegex.hasMatch(_signEmail.text.trim())) {
+      _toast('Informe um email válido', error: true);
+      return;
+    }
     if (_signPass.text.length < 6) {
       _toast('Mínimo de 6 caracteres', error: true);
       return;
@@ -67,7 +78,8 @@ class _LoginPageState extends State<LoginPage>
             _signPass.text,
             _signName.text.trim(),
           );
-      _toast('Conta criada com sucesso!');
+      _toast('Conta criada! Enviamos um email de confirmação — '
+          'verifique sua caixa de entrada.');
     } catch (e) {
       _toast(_msg(e), error: true);
     } finally {

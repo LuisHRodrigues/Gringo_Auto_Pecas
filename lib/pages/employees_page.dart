@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/auth_provider.dart';
 import '../services/data_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/input_formatters.dart';
 import '../widgets/common.dart';
 import 'parts_management_page.dart'
     show statsGridShared, actionsBarShared, emptyStateShared;
@@ -157,7 +159,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
   }
 
   Future<void> _openForm({Employee? editing}) async {
-    final result = await showDialog<Employee>(
+    final result = await showAppDialog<Employee>(
       context: context,
       builder: (_) => _EmployeeFormDialog(editing: editing),
     );
@@ -187,8 +189,10 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
   late final _cpf = TextEditingController(text: widget.editing?.cpf ?? '');
   late final _phone = TextEditingController(text: widget.editing?.phone ?? '');
   late final _email = TextEditingController(text: widget.editing?.email ?? '');
-  late final _salary =
-      TextEditingController(text: widget.editing?.salary.toString() ?? '');
+  late final _salary = TextEditingController(
+      text: widget.editing != null
+          ? formatCurrencyInput(widget.editing!.salary)
+          : '');
   late String _role = widget.editing?.role ?? 'mechanic';
   late String _status = widget.editing?.status ?? 'active';
   late DateTime _hireDate = widget.editing != null
@@ -203,17 +207,6 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
     super.dispose();
   }
 
-  String _formatCpf(String value) {
-    final digits = value.replaceAll(RegExp(r'\D'), '');
-    final b = StringBuffer();
-    for (var i = 0; i < digits.length && i < 11; i++) {
-      if (i == 3 || i == 6) b.write('.');
-      if (i == 9) b.write('-');
-      b.write(digits[i]);
-    }
-    return b.toString();
-  }
-
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>().user!;
@@ -226,7 +219,7 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
       phone: _phone.text,
       email: _email.text,
       hireDate: _hireDate.toIso8601String().split('T').first,
-      salary: double.tryParse(_salary.text.replaceAll(',', '.')) ?? 0,
+      salary: parseCurrencyInput(_salary.text),
       status: _status,
       createdBy: editing?.createdBy ??
           Creator(id: auth.id, name: auth.name, email: auth.email),
@@ -261,16 +254,9 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(
-                      child: _input(_cpf, 'CPF *', hint: '000.000.000-00',
-                          onChanged: (v) {
-                    final f = _formatCpf(v);
-                    if (f != v) {
-                      _cpf.value = TextEditingValue(
-                        text: f,
-                        selection: TextSelection.collapsed(offset: f.length),
-                      );
-                    }
-                  })),
+                      child: _input(_cpf, 'CPF *',
+                          hint: '000.000.000-00',
+                          formatters: [cpfInputFormatter])),
                   const SizedBox(width: 16),
                   Expanded(
                       child: _dropdown(
@@ -284,7 +270,8 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
                 Row(children: [
                   Expanded(
                       child: _input(_phone, 'Telefone *',
-                          hint: '(00) 00000-0000')),
+                          hint: '(00) 00000-0000',
+                          formatters: [phoneInputFormatter])),
                   const SizedBox(width: 16),
                   Expanded(
                       child:
@@ -296,7 +283,8 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
                   const SizedBox(width: 16),
                   Expanded(
                       child: _input(_salary, 'Salário (R\$) *',
-                          hint: '0.00', number: true)),
+                          hint: 'R\$ 0,00',
+                          numeric: NumericFieldType.currency)),
                 ]),
                 const SizedBox(height: 16),
                 _dropdown(
@@ -322,7 +310,9 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
   }
 
   Widget _input(TextEditingController c, String label,
-      {String? hint, bool number = false, ValueChanged<String>? onChanged}) {
+      {String? hint,
+      NumericFieldType? numeric,
+      List<TextInputFormatter>? formatters}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -331,10 +321,18 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
         const SizedBox(height: 6),
         TextFormField(
           controller: c,
-          onChanged: onChanged,
-          keyboardType: number
-              ? const TextInputType.numberWithOptions(decimal: true)
-              : null,
+          keyboardType: numeric != null
+              ? TextInputType.numberWithOptions(
+                  decimal: numeric == NumericFieldType.currency)
+              : (formatters != null ? TextInputType.phone : null),
+          inputFormatters: formatters ??
+              switch (numeric) {
+                NumericFieldType.integer => [
+                    FilteringTextInputFormatter.digitsOnly
+                  ],
+                NumericFieldType.currency => [CurrencyInputFormatter()],
+                null => null,
+              },
           decoration: InputDecoration(hintText: hint),
           validator: (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
         ),

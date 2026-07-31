@@ -22,6 +22,7 @@ class User {
   final String name;
   final String? avatar;
   final String provider; // 'email' | 'google'
+  final bool emailVerified;
 
   const User({
     required this.id,
@@ -29,6 +30,7 @@ class User {
     required this.name,
     this.avatar,
     required this.provider,
+    this.emailVerified = false,
   });
 
   factory User.fromJson(Map<String, dynamic> j) => User(
@@ -37,6 +39,7 @@ class User {
         name: j['name'] as String,
         avatar: j['avatar'] as String?,
         provider: j['provider'] as String? ?? 'email',
+        emailVerified: j['emailVerified'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +48,7 @@ class User {
         'name': name,
         'avatar': avatar,
         'provider': provider,
+        'emailVerified': emailVerified,
       };
 }
 
