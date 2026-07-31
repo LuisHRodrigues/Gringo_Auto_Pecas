@@ -19,10 +19,23 @@ class AuthProvider extends ChangeNotifier {
 
   User? _user;
   bool _isLoading = true;
+  // Marca que a conta acabou de ser criada nesta sessão do app — usado só
+  // para decidir se mostramos a tela de "confirme seu email" uma única vez,
+  // logo após o cadastro. Não deve bloquear logins futuros.
+  bool _justSignedUp = false;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _user != null;
+  bool get justSignedUp => _justSignedUp;
+
+  /// Fecha a tela de confirmação de email (usuário optou por continuar sem
+  /// verificar agora, ou já confirmou).
+  void dismissJustSignedUp() {
+    if (!_justSignedUp) return;
+    _justSignedUp = false;
+    notifyListeners();
+  }
 
   void _onAuthStateChanged(fb.User? fbUser) {
     _user = fbUser == null ? null : _mapUser(fbUser);
@@ -84,6 +97,7 @@ class AuthProvider extends ChangeNotifier {
       await cred.user?.updateDisplayName(name);
       await cred.user?.sendEmailVerification();
       await cred.user?.reload();
+      _justSignedUp = true;
       // Atualiza imediatamente o estado local com o nome (o reload acima nem
       // sempre dispara um novo evento de authStateChanges).
       final refreshed = _auth.currentUser;
@@ -139,6 +153,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {
       // Ignora falhas ao desconectar do Google (ex.: nunca logou por ele).
     }
+    _justSignedUp = false;
     await _auth.signOut();
   }
 

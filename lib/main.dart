@@ -65,9 +65,11 @@ class _Root extends StatelessWidget {
       );
     }
     if (!auth.isLoggedIn) return const LoginPage();
-    // Contas por email/senha precisam confirmar o email antes de acessar os
-    // dados; contas Google já chegam verificadas pelo próprio provedor.
-    if (!auth.user!.emailVerified) return const VerifyEmailPage();
+    // A confirmação de email só é exibida logo após criar a conta nesta
+    // sessão — não bloqueia logins futuros de contas ainda não verificadas.
+    if (auth.justSignedUp && !auth.user!.emailVerified) {
+      return const VerifyEmailPage();
+    }
     return const HomePage();
   }
 }

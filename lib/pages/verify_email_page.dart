@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import '../theme/app_theme.dart';
 
-/// Exibida no lugar do app enquanto a conta (criada por email/senha) ainda
-/// não confirmou o email — garante que o endereço realmente existe/pertence
-/// ao usuário antes de liberar o acesso aos dados da oficina.
+/// Exibida uma única vez, logo após criar uma conta por email/senha, para
+/// confirmar que o endereço realmente existe/pertence ao usuário. Não
+/// bloqueia logins futuros: o usuário pode pular e continuar usando o
+/// sistema mesmo sem verificar (ver [AuthProvider.dismissJustSignedUp]).
 class VerifyEmailPage extends StatefulWidget {
   const VerifyEmailPage({super.key});
 
@@ -123,6 +124,11 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () =>
+                      context.read<AuthProvider>().dismissJustSignedUp(),
+                  child: const Text('Continuar sem verificar agora'),
+                ),
                 TextButton(
                   onPressed: () => context.read<AuthProvider>().logout(),
                   child: const Text('Sair'),
