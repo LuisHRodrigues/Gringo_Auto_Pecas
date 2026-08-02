@@ -34,6 +34,13 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
 
+      - name: Restaurar .env
+        # .env é gitignored e é asset obrigatório (declarado em
+        # pubspec.yaml), então todo build precisa recriá-lo a partir do
+        # secret, mesmo em plataformas que não usam OAuth desktop.
+        shell: bash
+        run: echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
+
       - run: flutter config --enable-windows-desktop
       - run: flutter pub get
       - run: flutter build windows --release
@@ -153,6 +160,9 @@ jobs:
           path: ${{ env.PUB_CACHE }}
           key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      - name: Restaurar .env
+        run: echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
 
       - run: flutter pub get
       - run: flutter build web --release
