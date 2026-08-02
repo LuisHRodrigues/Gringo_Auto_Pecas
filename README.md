@@ -19,6 +19,7 @@ tempo real entre todos os usuários logados (modelo de oficina única).
 - [Como rodar](#como-rodar)
 - [Configuração do Firebase](#configuração-do-firebase)
 - [Testes](#testes)
+- [CI/CD](#cicd)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Observações sobre a conversão](#observações-sobre-a-conversão)
 
@@ -59,10 +60,11 @@ Firestore:
 | Gráficos         | `fl_chart`                                              |
 | Upload de imagem | `image_picker` (fotos das OSs, em base64/data URL)       |
 | Persistência local | `shared_preferences` (preferências leves de UI)      |
+| Ícone do app     | `flutter_launcher_icons` (gerado a partir de `assets/icon/`) |
 
 Principais dependências (`pubspec.yaml`): `provider`, `firebase_core`,
 `firebase_auth`, `cloud_firestore`, `google_sign_in`, `fl_chart`,
-`image_picker`, `shared_preferences`, `intl`.
+`image_picker`, `shared_preferences`, `intl`, `flutter_launcher_icons` (dev).
 
 ## Arquitetura
 
@@ -104,6 +106,10 @@ As regras de segurança (`firestore.rules`) permitem leitura/escrita das
 coleções operacionais para qualquer usuário autenticado; o documento de
 `users/{uid}` só pode ser escrito pelo próprio dono.
 
+O app inicia sem dados de exemplo: as coleções são populadas conforme o uso
+(a única exceção é a loja padrão `motogest`, criada automaticamente no
+primeiro login, ver `DataProvider._ensureDefaultStore`).
+
 ## Como rodar
 
 Pré-requisito: Flutter instalado (canal stable, SDK Dart 3.3+).
@@ -134,7 +140,8 @@ O app já está integrado via FlutterFire. Arquivos relevantes:
 - `lib/firebase_options.dart`: configuração gerada pelo `flutterfire configure`
 - `firestore.rules`: regras de segurança do Firestore
 - `firestore.indexes.json`: índices compostos
-- `firebase.json`: referencia regras e índices
+- `firebase.json`: referencia regras, índices e as configurações do
+  `flutterfire configure` (projeto `gringomotopecas-c285e`)
 
 ### Passos manuais no Console Firebase
 
@@ -169,6 +176,23 @@ flutter test
 - `test/widget_test.dart`: formatação de moeda e datas (`formatCurrency`,
   `formatDate`, `formatDateTime`).
 
+## CI/CD
+
+Dois workflows em `.github/workflows/`:
+
+- **`ci.yml`**: roda em todo push/PR para `main`, verificando formatação
+  (`dart format`), análise estática (`flutter analyze`) e os testes
+  (`flutter test`).
+- **`release-build.yml`**: dispara apenas quando uma tag `v*.*.*` é enviada
+  (ex.: `v1.2.0`). Builda e publica um GitHub Release com:
+  - **Windows**: build de release (`flutter build windows`), com as DLLs do
+    Visual C++ Redistributable copiadas para o app ficar autocontido,
+    compactado em `gmp-gestor-windows.zip`, **e** um instalador
+    `gmp-gestor-setup.exe` gerado com **Inno Setup**
+    (`windows/installer/motogest.iss`), usando a versão da tag.
+  - **Web**: build de release (`flutter build web`), compactado em
+    `gmp-gestor-web.zip`.
+
 ## Estrutura do projeto
 
 ```
@@ -176,7 +200,6 @@ lib/
   main.dart                    → ponto de entrada, providers e roteamento por estado de login
   firebase_options.dart        → configuração do Firebase (gerada pelo FlutterFire)
   models/models.dart           → modelos de dados (Part, ServiceOrder, Employee, Transaction, Store, Category, User)
-  data/                        → dados de exemplo (sample_parts_employees.dart, sample_orders_finance.dart)
   services/
     auth_provider.dart         → autenticação via Firebase Auth (email/senha + Google)
     data_provider.dart         → estado e persistência em tempo real no Cloud Firestore
@@ -196,8 +219,25 @@ lib/
     search_parts_page.dart     → busca/catálogo de peças
     finances_page.dart         → módulo financeiro (lojas, gráficos, transações)
 test/                          → testes unitários e de widget
+assets/icon/                   → ícones fonte para o flutter_launcher_icons
+windows/installer/motogest.iss → script do Inno Setup usado no release Windows
+.github/workflows/             → CI (ci.yml) e build/publish de releases (release-build.yml)
 firestore.rules                → regras de segurança do Firestore
 firestore.indexes.json         → índices compostos do Firestore
 firebase.json                  → configuração do projeto Firebase
 android/ ios/ linux/ macos/ windows/ web/  → projetos de cada plataforma (gerados pelo Flutter)
 ```
+
+## Observações sobre a conversão
+
+- As cores em `oklch` do tema React original foram convertidas para os
+  equivalentes RGB mais próximos em `app_theme.dart`.
+- A navegação usa `IndexedStack` (estado preservado entre abas), no lugar do
+  `react-router`.
+- Os gráficos do `recharts` foram reescritos com `fl_chart`.
+- O login com Google usa o fluxo real do Firebase/`google_sign_in` (popup na
+  web, `GoogleSignIn.authenticate()` em mobile/desktop); não é mais
+  simulado.
+- O pacote Dart e o binário Windows chamam-se `gmp_gestor` internamente
+  (nome do app: **GMP Gestor**); o `applicationId`/namespace Android ainda é
+  `com.example.motogest`, herdado do nome original do projeto.
