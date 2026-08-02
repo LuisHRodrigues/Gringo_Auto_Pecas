@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -717,11 +719,20 @@ class _AreaChart extends StatelessWidget {
             FlSpot(i.toDouble(), f(monthly[i])),
         ];
 
+    final values = [
+      for (final p in monthly) ...[p.entradas, p.saidas],
+    ];
+    final bounds = _niceAxisBounds(values);
+
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: true),
-        titlesData: _monthTitles(monthly),
+        titlesData: _monthTitles(monthly, yInterval: bounds.interval),
         borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (monthly.length - 1).clamp(0, double.infinity).toDouble(),
+        minY: bounds.min,
+        maxY: bounds.max,
         lineBarsData: [
           _areaBar(spots((p) => p.entradas), const Color(0xFF10B981)),
           _areaBar(spots((p) => p.saidas), const Color(0xFFEF4444)),
@@ -747,11 +758,17 @@ class _LineChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bounds = _niceAxisBounds([for (final p in monthly) p.lucro]);
+
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: true),
-        titlesData: _monthTitles(monthly),
+        titlesData: _monthTitles(monthly, yInterval: bounds.interval),
         borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (monthly.length - 1).clamp(0, double.infinity).toDouble(),
+        minY: bounds.min,
+        maxY: bounds.max,
         lineBarsData: [
           LineChartBarData(
             spots: [
@@ -769,18 +786,67 @@ class _LineChartView extends StatelessWidget {
   }
 }
 
-FlTitlesData _monthTitles(List<_MonthPoint> monthly) => FlTitlesData(
+/// Bordas "redondas" (múltiplas de um passo 1/2/5×10ⁿ) para o eixo Y, para
+/// que os rótulos fiquem igualmente espaçados em vez de espremer um valor de
+/// borda (ex.: o máximo exato dos dados) perto do rótulo do intervalo normal.
+class _AxisBounds {
+  const _AxisBounds(this.min, this.max, this.interval);
+  final double min;
+  final double max;
+  final double interval;
+}
+
+_AxisBounds _niceAxisBounds(List<double> values) {
+  final dataMin = values.isEmpty ? 0.0 : values.reduce((a, b) => a < b ? a : b);
+  final dataMax = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
+  // Garante um range positivo mesmo quando todos os valores são iguais
+  // (ex.: um único mês, ou tudo zerado).
+  final range =
+      (dataMax - dataMin) <= 0 ? (dataMax.abs() + 1) : dataMax - dataMin;
+
+  final rawStep = range / 5;
+  final magnitude =
+      math.pow(10, (math.log(rawStep) / math.ln10).floor()).toDouble();
+  final residual = rawStep / magnitude;
+  double niceResidual;
+  if (residual >= 5) {
+    niceResidual = 10;
+  } else if (residual >= 2) {
+    niceResidual = 5;
+  } else if (residual >= 1) {
+    niceResidual = 2;
+  } else {
+    niceResidual = 1;
+  }
+  final step = niceResidual * magnitude;
+
+  final min = (dataMin / step).floor() * step;
+  var max = (dataMax / step).ceil() * step;
+  if (max <= min) max = min + step;
+  return _AxisBounds(min, max, step);
+}
+
+FlTitlesData _monthTitles(List<_MonthPoint> monthly, {double? yInterval}) =>
+    FlTitlesData(
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      leftTitles: const AxisTitles(
-        sideTitles: SideTitles(showTitles: true, reservedSize: 44),
+      leftTitles: AxisTitles(
+        sideTitles:
+            SideTitles(showTitles: true, reservedSize: 44, interval: yInterval),
       ),
       bottomTitles: AxisTitles(
         sideTitles: SideTitles(
           showTitles: true,
+          // Sem isso o fl_chart calcula um intervalo automático fracionário
+          // (ex.: 0.05) para o eixo X, chamando getTitlesWidget várias vezes
+          // por mês — o índice truncado repete o mesmo mês várias vezes.
+          // Um rótulo por mês = intervalo fixo de 1 unidade no eixo.
+          interval: 1,
           getTitlesWidget: (value, meta) {
-            final i = value.toInt();
-            if (i < 0 || i >= monthly.length) return const SizedBox.shrink();
+            final i = value.round();
+            if (i < 0 || i >= monthly.length || i != value) {
+              return const SizedBox.shrink();
+            }
             return Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(monthly[i].mes, style: const TextStyle(fontSize: 11)),
