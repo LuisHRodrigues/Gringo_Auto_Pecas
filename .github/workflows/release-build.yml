@@ -66,6 +66,23 @@ jobs:
           path: motogest-windows.zip
           if-no-files-found: error
 
+      - name: Gerar instalador .exe com Inno Setup
+        # O Inno Setup 6 já vem instalado no runner windows-latest do GitHub
+        # Actions (image "windows-2022"/"windows-2025"). Não é necessário
+        # instalar nada, só chamar o compilador ISCC.
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppVersion=$version" `
+            "windows\installer\motogest.iss"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist\motogest-setup.exe
+          if-no-files-found: error
+
   web:
     name: Build Web
     runs-on: ubuntu-latest
@@ -114,5 +131,6 @@ jobs:
         with:
           files: |
             artifacts/windows-release/**
+            artifacts/windows-installer/**
             artifacts/web-release/**
           generate_release_notes: true
