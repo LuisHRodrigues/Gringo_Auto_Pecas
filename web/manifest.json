@@ -1,6 +1,6 @@
 {
-    "name": "motogest",
-    "short_name": "motogest",
+    "name": "GMP Gestor",
+    "short_name": "GMP Gestor",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

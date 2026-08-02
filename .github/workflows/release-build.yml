@@ -58,12 +58,12 @@ jobs:
           Copy-Item "$redistDir\vcruntime140*.dll" -Destination build\windows\x64\runner\Release\
 
       - name: Compactar build Windows
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath motogest-windows.zip
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath gmp-gestor-windows.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: motogest-windows.zip
+          path: gmp-gestor-windows.zip
           if-no-files-found: error
 
       - name: Gerar instalador .exe com Inno Setup
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: dist\motogest-setup.exe
+          path: dist\gmp-gestor-setup.exe
           if-no-files-found: error
 
   web:
@@ -109,12 +109,12 @@ jobs:
       - name: Compactar build Web
         run: |
           cd build/web
-          zip -r -X ${{ github.workspace }}/motogest-web.zip .
+          zip -r -X ${{ github.workspace }}/gmp-gestor-web.zip .
 
       - uses: actions/upload-artifact@v4
         with:
           name: web-release
-          path: motogest-web.zip
+          path: gmp-gestor-web.zip
           if-no-files-found: error
 
   release:

@@ -81,7 +81,7 @@ class AppShell extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('MotoGest',
+                            Text('GMP Gestor',
                                 style: TextStyle(
                                     fontSize: 20, fontWeight: FontWeight.bold)),
                             Text('Gestão de Oficina',

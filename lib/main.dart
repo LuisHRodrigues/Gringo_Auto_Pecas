@@ -15,11 +15,11 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MotoGestApp());
+  runApp(const GmpGestorApp());
 }
 
-class MotoGestApp extends StatelessWidget {
-  const MotoGestApp({super.key});
+class GmpGestorApp extends StatelessWidget {
+  const GmpGestorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,7 @@ class MotoGestApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'MotoGest',
+        title: 'GMP Gestor',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: const Locale('pt', 'BR'),

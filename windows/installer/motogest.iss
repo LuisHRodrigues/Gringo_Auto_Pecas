@@ -1,4 +1,4 @@
-; Script do Inno Setup para gerar o instalador Windows (motogest-setup.exe).
+; Script do Inno Setup para gerar o instalador Windows (gmp-gestor-setup.exe).
 ; Gerado a partir do build de release do Flutter (build\windows\x64\runner\Release).
 ; O workflow de release passa MyAppVersion via /D (ver .github/workflows/release-build.yml).
 
@@ -6,9 +6,9 @@
 #define MyAppVersion "1.0.0"
 #endif
 
-#define MyAppName "MotoGest"
-#define MyAppPublisher "MotoGest"
-#define MyAppExeName "motogest.exe"
+#define MyAppName "GMP Gestor"
+#define MyAppPublisher "GMP Gestor"
+#define MyAppExeName "gmp_gestor.exe"
 #define ReleaseDir "..\..\build\windows\x64\runner\Release"
 
 [Setup]
@@ -20,7 +20,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist
-OutputBaseFilename=motogest-setup
+OutputBaseFilename=gmp-gestor-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

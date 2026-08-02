@@ -1,4 +1,4 @@
-# MotoGest
+# GMP Gestor
 
 Sistema de gestão para oficina de motos, feito em **Flutter** com backend em
 **Firebase** (Authentication + Cloud Firestore). Controla peças, ordens de

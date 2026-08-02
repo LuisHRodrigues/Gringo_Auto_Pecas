@@ -143,8 +143,10 @@ class DataProvider extends ChangeNotifier {
 
   // ---------------- Lojas ----------------
   static const _defaultStore = BusinessStore(
+    // Mantém o id histórico 'motogest' — é a chave usada em storeId nos
+    // documentos do Firestore já existentes; mudar quebraria os dados atuais.
     id: 'motogest',
-    name: 'MotoGest Oficina',
+    name: 'GMP Gestor Oficina',
     type: 'Oficina de Motos',
     icon: 'wrench',
     color: 0xFF3B82F6,

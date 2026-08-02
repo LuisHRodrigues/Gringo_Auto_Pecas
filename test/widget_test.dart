@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motogest/widgets/common.dart';
+import 'package:gmp_gestor/widgets/common.dart';
 
 void main() {
   group('formatCurrency', () {

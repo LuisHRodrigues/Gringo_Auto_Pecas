@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motogest/utils/input_formatters.dart';
+import 'package:gmp_gestor/utils/input_formatters.dart';
 
 TextEditingValue _apply(TextInputFormatter f, String oldText, String newText) {
   return f.formatEditUpdate(

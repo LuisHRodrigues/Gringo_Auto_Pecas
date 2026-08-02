@@ -1,5 +1,5 @@
-name: motogest
-description: "MotoGest - Sistema de gestão de oficina de motos (peças, ordens de serviço, funcionários e finanças)."
+name: gmp_gestor
+description: "GMP Gestor - Sistema de gestão de oficina de motos (peças, ordens de serviço, funcionários e finanças)."
 publish_to: 'none'
 version: 1.0.0+1
 
