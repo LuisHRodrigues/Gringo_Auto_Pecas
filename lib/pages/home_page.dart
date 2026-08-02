@@ -33,6 +33,18 @@ class _HomePageState extends State<HomePage> {
         duration: const Duration(milliseconds: 220),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
+        // O layoutBuilder padrão do AnimatedSwitcher empilha os filhos
+        // centralizados verticalmente (Alignment.center) — como o conteúdo
+        // de cada página não preenche toda a altura disponível, isso criava
+        // um vão enorme entre a topbar e o título. Alinhando ao topo em vez
+        // de centralizar, o conteúdo cola certinho embaixo da topbar.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        ),
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(

@@ -48,3 +48,6 @@ ui-debug.log
 android/key.properties
 *.jks
 *.keystore
+
+# Segredos de app (credenciais OAuth etc.) — nunca commitar.
+.env

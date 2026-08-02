@@ -1014,59 +1014,56 @@ class _RecentTransactions extends StatelessWidget {
           const Text('Transações Recentes',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Data')),
-                DataColumn(label: Text('Tipo')),
-                DataColumn(label: Text('Categoria')),
-                DataColumn(label: Text('Descrição')),
-                DataColumn(label: Text('Valor'), numeric: true),
-              ],
-              rows: rows.map((t) {
-                final isEntrada = t.type == 'entrada';
-                final color = isEntrada ? AppColors.green600 : AppColors.red600;
-                return DataRow(cells: [
-                  DataCell(Text(formatDate(t.date))),
-                  DataCell(Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isEntrada ? AppColors.green100 : AppColors.red100,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(isEntrada ? Icons.arrow_outward : Icons.south_east,
-                            size: 12,
-                            color: isEntrada
-                                ? AppColors.green700
-                                : AppColors.red700),
-                        const SizedBox(width: 4),
-                        Text(isEntrada ? 'Entrada' : 'Saída',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isEntrada
-                                    ? AppColors.green700
-                                    : AppColors.red700)),
-                      ],
-                    ),
-                  )),
-                  DataCell(Text(t.category)),
-                  DataCell(ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: Text(t.description, overflow: TextOverflow.ellipsis),
-                  )),
-                  DataCell(Text(
-                    '${isEntrada ? '+' : '-'}${formatCurrency(t.amount)}',
-                    style: TextStyle(fontWeight: FontWeight.w500, color: color),
-                  )),
-                ]);
-              }).toList(),
-            ),
+          appDataTable(
+            columns: const [
+              DataColumn(label: Text('Data')),
+              DataColumn(label: Text('Tipo')),
+              DataColumn(label: Text('Categoria')),
+              DataColumn(label: Text('Descrição')),
+              DataColumn(label: Text('Valor'), numeric: true),
+            ],
+            rows: rows.map((t) {
+              final isEntrada = t.type == 'entrada';
+              final color = isEntrada ? AppColors.green600 : AppColors.red600;
+              return DataRow(cells: [
+                DataCell(Text(formatDate(t.date))),
+                DataCell(Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isEntrada ? AppColors.green100 : AppColors.red100,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(isEntrada ? Icons.arrow_outward : Icons.south_east,
+                          size: 12,
+                          color: isEntrada
+                              ? AppColors.green700
+                              : AppColors.red700),
+                      const SizedBox(width: 4),
+                      Text(isEntrada ? 'Entrada' : 'Saída',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: isEntrada
+                                  ? AppColors.green700
+                                  : AppColors.red700)),
+                    ],
+                  ),
+                )),
+                DataCell(Text(t.category)),
+                DataCell(ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: Text(t.description, overflow: TextOverflow.ellipsis),
+                )),
+                DataCell(Text(
+                  '${isEntrada ? '+' : '-'}${formatCurrency(t.amount)}',
+                  style: TextStyle(fontWeight: FontWeight.w500, color: color),
+                )),
+              ]);
+            }).toList(),
           ),
         ],
       ),

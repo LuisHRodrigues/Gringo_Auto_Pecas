@@ -184,69 +184,63 @@ class _ServiceOrdersPageState extends State<ServiceOrdersPage> {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Número OS')),
-            DataColumn(label: Text('Cliente')),
-            DataColumn(label: Text('Moto')),
-            DataColumn(label: Text('Placa')),
-            DataColumn(label: Text('Mecânico')),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Fotos')),
-            DataColumn(label: Text('Valor Total'), numeric: true),
-            DataColumn(label: Text('Data')),
-            DataColumn(label: Text('Ações')),
-          ],
-          rows: orders.map((o) {
-            return DataRow(cells: [
-              DataCell(Text(o.orderNumber,
-                  style:
-                      const TextStyle(fontFamily: 'monospace', fontSize: 13))),
-              DataCell(Text(o.customerName)),
-              DataCell(Text('${o.motorcycleBrand} ${o.motorcycleModel}')),
-              DataCell(Text(o.motorcyclePlate,
-                  style:
-                      const TextStyle(fontFamily: 'monospace', fontSize: 13))),
-              DataCell(Text(o.mechanicName)),
-              DataCell(statusBadge(o.status)),
-              DataCell(o.photos.isNotEmpty
-                  ? Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.image_outlined,
-                          size: 16, color: AppColors.mutedForeground),
-                      const SizedBox(width: 4),
-                      Text('${o.photos.length}',
-                          style: const TextStyle(
-                              color: AppColors.mutedForeground)),
-                    ])
-                  : const Text('-',
-                      style: TextStyle(color: AppColors.mutedForeground))),
-              DataCell(Text(formatCurrency(o.totalCost),
-                  style: const TextStyle(fontWeight: FontWeight.w600))),
-              DataCell(Text(formatDate(o.createdAt),
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.mutedForeground))),
-              DataCell(Row(children: [
-                IconButton(
-                    icon: const Icon(Icons.visibility_outlined, size: 18),
-                    onPressed: () => _openDetails(o)),
-                IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: () => _openForm(editing: o)),
-                IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: 18, color: AppColors.destructive),
-                    onPressed: () async {
-                      final data = context.read<DataProvider>();
-                      final ok = await runGuarded(
-                          context, () => data.deleteOrder(o.id));
-                      if (ok && mounted) _toast('Ordem de serviço removida!');
-                    }),
-              ])),
-            ]);
-          }).toList(),
-        ),
+      child: appDataTable(
+        columns: const [
+          DataColumn(label: Text('Número OS')),
+          DataColumn(label: Text('Cliente')),
+          DataColumn(label: Text('Moto')),
+          DataColumn(label: Text('Placa')),
+          DataColumn(label: Text('Mecânico')),
+          DataColumn(label: Text('Status')),
+          DataColumn(label: Text('Fotos')),
+          DataColumn(label: Text('Valor Total'), numeric: true),
+          DataColumn(label: Text('Data')),
+          DataColumn(label: Text('Ações')),
+        ],
+        rows: orders.map((o) {
+          return DataRow(cells: [
+            DataCell(Text(o.orderNumber,
+                style: const TextStyle(fontFamily: 'monospace'))),
+            DataCell(Text(o.customerName)),
+            DataCell(Text('${o.motorcycleBrand} ${o.motorcycleModel}')),
+            DataCell(Text(o.motorcyclePlate,
+                style: const TextStyle(fontFamily: 'monospace'))),
+            DataCell(Text(o.mechanicName)),
+            DataCell(statusBadge(o.status)),
+            DataCell(o.photos.isNotEmpty
+                ? Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.image_outlined,
+                        size: 16, color: AppColors.mutedForeground),
+                    const SizedBox(width: 4),
+                    Text('${o.photos.length}',
+                        style:
+                            const TextStyle(color: AppColors.mutedForeground)),
+                  ])
+                : const Text('-',
+                    style: TextStyle(color: AppColors.mutedForeground))),
+            DataCell(Text(formatCurrency(o.totalCost),
+                style: const TextStyle(fontWeight: FontWeight.w600))),
+            DataCell(Text(formatDate(o.createdAt),
+                style: const TextStyle(color: AppColors.mutedForeground))),
+            DataCell(Row(children: [
+              IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  onPressed: () => _openDetails(o)),
+              IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: () => _openForm(editing: o)),
+              IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: AppColors.destructive),
+                  onPressed: () async {
+                    final data = context.read<DataProvider>();
+                    final ok =
+                        await runGuarded(context, () => data.deleteOrder(o.id));
+                    if (ok && mounted) _toast('Ordem de serviço removida!');
+                  }),
+            ])),
+          ]);
+        }).toList(),
       ),
     );
   }
@@ -694,7 +688,8 @@ class _OrderDetailsDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Criada em ${formatDateTime(order.createdAt)}',
-                  style: const TextStyle(color: AppColors.mutedForeground)),
+                  style: const TextStyle(
+                      fontSize: 15, color: AppColors.mutedForeground)),
               const SizedBox(height: 20),
               _block('Cliente', [
                 _kv('Nome', order.customerName),
@@ -709,7 +704,8 @@ class _OrderDetailsDialog extends StatelessWidget {
               if (order.photos.isNotEmpty) ...[
                 _divider(),
                 const Text('Fotos do Estado de Chegada',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                    style:
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
@@ -754,22 +750,24 @@ class _OrderDetailsDialog extends StatelessWidget {
               ],
               _divider(),
               const Text('Serviço',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               _kvCol('Problema Relatado', order.problem),
               const SizedBox(height: 8),
               _kvCol('Mecânico Responsável', order.mechanicName),
               _divider(),
               const Text('Valores',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Mão de Obra',
-                      style: TextStyle(color: AppColors.mutedForeground)),
+                      style: TextStyle(
+                          fontSize: 15, color: AppColors.mutedForeground)),
                   Text(formatCurrency(order.laborCost),
-                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w500)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -778,10 +776,10 @@ class _OrderDetailsDialog extends StatelessWidget {
                 children: [
                   const Text('Total',
                       style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
                   Text(formatCurrency(order.totalCost),
                       style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary)),
                 ],
@@ -789,14 +787,14 @@ class _OrderDetailsDialog extends StatelessWidget {
               _divider(),
               Text('Cadastrado por: ${order.createdBy.name}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.mutedForeground)),
+                      fontSize: 13, color: AppColors.mutedForeground)),
               Text('Email: ${order.createdBy.email}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.mutedForeground)),
+                      fontSize: 13, color: AppColors.mutedForeground)),
               if (order.completedAt != null)
                 Text('Concluída em: ${formatDateTime(order.completedAt!)}',
                     style: const TextStyle(
-                        fontSize: 12, color: AppColors.mutedForeground)),
+                        fontSize: 13, color: AppColors.mutedForeground)),
             ],
           ),
         ),
@@ -816,7 +814,8 @@ class _OrderDetailsDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         Wrap(spacing: 32, runSpacing: 12, children: kvs),
       ],
@@ -830,8 +829,10 @@ class _OrderDetailsDialog extends StatelessWidget {
       children: [
         Text(k,
             style: const TextStyle(
-                fontSize: 13, color: AppColors.mutedForeground)),
-        Text(v, style: const TextStyle(fontWeight: FontWeight.w500)),
+                fontSize: 15, color: AppColors.mutedForeground)),
+        Text(v,
+            style:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -842,8 +843,10 @@ class _OrderDetailsDialog extends StatelessWidget {
       children: [
         Text(k,
             style: const TextStyle(
-                fontSize: 13, color: AppColors.mutedForeground)),
-        Text(v, style: const TextStyle(fontWeight: FontWeight.w500)),
+                fontSize: 15, color: AppColors.mutedForeground)),
+        Text(v,
+            style:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ],
     );
   }

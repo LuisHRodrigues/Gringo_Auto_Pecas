@@ -103,57 +103,51 @@ class _EmployeesPageState extends State<EmployeesPage> {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Nome')),
-            DataColumn(label: Text('CPF')),
-            DataColumn(label: Text('Cargo')),
-            DataColumn(label: Text('Telefone')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Admissão')),
-            DataColumn(label: Text('Salário'), numeric: true),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Ações')),
-          ],
-          rows: employees.map((e) {
-            return DataRow(cells: [
-              DataCell(Text(e.name,
-                  style: const TextStyle(fontWeight: FontWeight.w500))),
-              DataCell(Text(e.cpf,
-                  style:
-                      const TextStyle(fontFamily: 'monospace', fontSize: 13))),
-              DataCell(Text(_roleLabels[e.role] ?? e.role)),
-              DataCell(Text(e.phone)),
-              DataCell(Text(e.email, style: const TextStyle(fontSize: 13))),
-              DataCell(Text(formatDate(e.hireDate),
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.mutedForeground))),
-              DataCell(Text(formatCurrency(e.salary),
-                  style: const TextStyle(fontWeight: FontWeight.w600))),
-              DataCell(e.status == 'active'
-                  ? const AppBadge(
-                      label: 'Ativo', variant: BadgeVariant.success)
-                  : const AppBadge(
-                      label: 'Inativo', variant: BadgeVariant.outline)),
-              DataCell(Row(children: [
-                IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: () => _openForm(editing: e)),
-                IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: 18, color: AppColors.destructive),
-                    onPressed: () async {
-                      final data = context.read<DataProvider>();
-                      final ok = await runGuarded(
-                          context, () => data.deleteEmployee(e.id));
-                      if (ok && mounted) _toast('Funcionário removido!');
-                    }),
-              ])),
-            ]);
-          }).toList(),
-        ),
+      child: appDataTable(
+        columns: const [
+          DataColumn(label: Text('Nome')),
+          DataColumn(label: Text('CPF')),
+          DataColumn(label: Text('Cargo')),
+          DataColumn(label: Text('Telefone')),
+          DataColumn(label: Text('Email')),
+          DataColumn(label: Text('Admissão')),
+          DataColumn(label: Text('Salário'), numeric: true),
+          DataColumn(label: Text('Status')),
+          DataColumn(label: Text('Ações')),
+        ],
+        rows: employees.map((e) {
+          return DataRow(cells: [
+            DataCell(Text(e.name,
+                style: const TextStyle(fontWeight: FontWeight.w500))),
+            DataCell(
+                Text(e.cpf, style: const TextStyle(fontFamily: 'monospace'))),
+            DataCell(Text(_roleLabels[e.role] ?? e.role)),
+            DataCell(Text(e.phone)),
+            DataCell(Text(e.email)),
+            DataCell(Text(formatDate(e.hireDate),
+                style: const TextStyle(color: AppColors.mutedForeground))),
+            DataCell(Text(formatCurrency(e.salary),
+                style: const TextStyle(fontWeight: FontWeight.w600))),
+            DataCell(e.status == 'active'
+                ? const AppBadge(label: 'Ativo', variant: BadgeVariant.success)
+                : const AppBadge(
+                    label: 'Inativo', variant: BadgeVariant.outline)),
+            DataCell(Row(children: [
+              IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: () => _openForm(editing: e)),
+              IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: AppColors.destructive),
+                  onPressed: () async {
+                    final data = context.read<DataProvider>();
+                    final ok = await runGuarded(
+                        context, () => data.deleteEmployee(e.id));
+                    if (ok && mounted) _toast('Funcionário removido!');
+                  }),
+            ])),
+          ]);
+        }).toList(),
       ),
     );
   }

@@ -64,7 +64,7 @@ class _SearchPartsPageState extends State<SearchPartsPage> {
         children: [
           const PageHeader(
             icon: Icons.search,
-            title: 'Busca de Peças',
+            title: 'Buscar Peças',
             subtitle: 'Consulte o catálogo completo de peças disponíveis',
           ),
           const SizedBox(height: 32),
@@ -103,50 +103,60 @@ class _SearchPartsPageState extends State<SearchPartsPage> {
           const SizedBox(height: 16),
           LayoutBuilder(builder: (context, c) {
             final cols = c.maxWidth >= 1024 ? 4 : (c.maxWidth >= 640 ? 2 : 1);
-            return GridView.count(
-              crossAxisCount: cols,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: cols == 1 ? 5 : 3,
+            const spacing = 16.0;
+            final width = (c.maxWidth - spacing * (cols - 1)) / cols;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
               children: [
-                _labeled(
-                    'Buscar',
-                    TextField(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _query = v),
-                      decoration: const InputDecoration(
-                        hintText: 'Nome, código ou descrição...',
-                        prefixIcon: Icon(Icons.search, size: 18),
-                      ),
-                    )),
-                _labeled(
-                    'Categoria',
-                    _select(
-                      _category,
-                      {'all': 'Todas', for (final c in categories) c: c},
-                      (v) => setState(() => _category = v!),
-                    )),
-                _labeled(
-                    'Marca',
-                    _select(
-                      _brand,
-                      {'all': 'Todas', for (final b in brands) b: b},
-                      (v) => setState(() => _brand = v!),
-                    )),
-                _labeled(
-                    'Disponibilidade',
-                    _select(
-                      _stock,
-                      const {
-                        'all': 'Todos',
-                        'in-stock': 'Em estoque',
-                        'low-stock': 'Estoque baixo',
-                        'out-of-stock': 'Sem estoque',
-                      },
-                      (v) => setState(() => _stock = v!),
-                    )),
+                SizedBox(
+                  width: width,
+                  child: _labeled(
+                      'Buscar',
+                      TextField(
+                        controller: _searchCtrl,
+                        onChanged: (v) => setState(() => _query = v),
+                        decoration: const InputDecoration(
+                          hintText: 'Nome, código ou descrição...',
+                          prefixIcon: Icon(Icons.search, size: 18),
+                        ),
+                      )),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _labeled(
+                      'Categoria',
+                      _select(
+                        _category,
+                        {'all': 'Todas', for (final c in categories) c: c},
+                        (v) => setState(() => _category = v!),
+                      )),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _labeled(
+                      'Marca',
+                      _select(
+                        _brand,
+                        {'all': 'Todas', for (final b in brands) b: b},
+                        (v) => setState(() => _brand = v!),
+                      )),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _labeled(
+                      'Disponibilidade',
+                      _select(
+                        _stock,
+                        const {
+                          'all': 'Todos',
+                          'in-stock': 'Em estoque',
+                          'low-stock': 'Estoque baixo',
+                          'out-of-stock': 'Sem estoque',
+                        },
+                        (v) => setState(() => _stock = v!),
+                      )),
+                ),
               ],
             );
           }),
@@ -196,14 +206,14 @@ class _SearchPartsPageState extends State<SearchPartsPage> {
   Widget _resultsGrid(List<MotorcyclePart> parts) {
     return LayoutBuilder(builder: (context, c) {
       final cols = c.maxWidth >= 1024 ? 3 : (c.maxWidth >= 768 ? 2 : 1);
-      return GridView.count(
-        crossAxisCount: cols,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 1.15,
-        children: parts.map(_card).toList(),
+      const spacing = 16.0;
+      final width = (c.maxWidth - spacing * (cols - 1)) / cols;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [
+          for (final p in parts) SizedBox(width: width, child: _card(p)),
+        ],
       );
     });
   }
@@ -222,7 +232,7 @@ class _SearchPartsPageState extends State<SearchPartsPage> {
 
   Widget _card(MotorcyclePart p) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
         border: Border.all(color: AppColors.border),

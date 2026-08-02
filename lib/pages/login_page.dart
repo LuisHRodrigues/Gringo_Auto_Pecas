@@ -87,6 +87,62 @@ class _LoginPageState extends State<LoginPage>
     }
   }
 
+  Future<void> _doForgotPassword() async {
+    final emailCtrl = TextEditingController(text: _loginEmail.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Recuperar senha'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Informe seu email para receber um link de redefinição de senha.',
+              style: TextStyle(color: AppColors.mutedForeground),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'seu@email.com',
+                prefixIcon: Icon(Icons.mail_outline, size: 18),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, emailCtrl.text.trim()),
+            child: const Text('Enviar'),
+          ),
+        ],
+      ),
+    );
+    emailCtrl.dispose();
+    if (email == null || email.isEmpty || !mounted) return;
+    if (!_emailRegex.hasMatch(email)) {
+      _toast('Informe um email válido', error: true);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await context.read<AuthProvider>().sendPasswordResetEmail(email);
+      _toast('Enviamos um email com instruções para redefinir sua senha.');
+    } catch (e) {
+      _toast(_msg(e), error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _doGoogle() async {
     setState(() => _loading = true);
     try {
@@ -121,11 +177,14 @@ class _LoginPageState extends State<LoginPage>
                     color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.two_wheeler,
-                      size: 48, color: AppColors.primary),
+                  child: Image.asset(
+                    'assets/icons/wrench.png',
+                    width: 48,
+                    height: 48,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Gerenciamento de Peças',
+                const Text('GMP Gestor',
                     style:
                         TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
@@ -233,50 +292,60 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _loginTab() {
-    return Column(
-      children: [
-        _field(
-            controller: _loginEmail,
-            label: 'Email',
-            icon: Icons.mail_outline,
-            hint: 'seu@email.com',
-            type: TextInputType.emailAddress),
-        const SizedBox(height: 16),
-        _field(
-            controller: _loginPass,
-            label: 'Senha',
-            icon: Icons.lock_outline,
-            hint: '••••••••',
-            obscure: true),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _loading ? null : _doLogin,
-            child: Text(_loading ? 'Entrando...' : 'Entrar'),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _field(
+              controller: _loginEmail,
+              label: 'Email',
+              icon: Icons.mail_outline,
+              hint: 'seu@email.com',
+              type: TextInputType.emailAddress),
+          const SizedBox(height: 16),
+          _field(
+              controller: _loginPass,
+              label: 'Senha',
+              icon: Icons.lock_outline,
+              hint: '••••••••',
+              obscure: true),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _loading ? null : _doForgotPassword,
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: const Text('Esqueceu a senha?'),
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Row(children: const [
-          Expanded(child: Divider()),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text('OU CONTINUE COM',
-                style:
-                    TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _doLogin,
+              child: Text(_loading ? 'Entrando...' : 'Entrar'),
+            ),
           ),
-          Expanded(child: Divider()),
-        ]),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _loading ? null : _doGoogle,
-            icon: const Icon(Icons.g_mobiledata, size: 24),
-            label: const Text('Google'),
+          const SizedBox(height: 20),
+          Row(children: const [
+            Expanded(child: Divider()),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('OU CONTINUE COM',
+                  style: TextStyle(
+                      fontSize: 11, color: AppColors.mutedForeground)),
+            ),
+            Expanded(child: Divider()),
+          ]),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _loading ? null : _doGoogle,
+              icon: const Icon(Icons.g_mobiledata, size: 24),
+              label: const Text('Google'),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

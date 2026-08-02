@@ -93,6 +93,20 @@ class MotorcyclePart {
         createdAt: j['createdAt'] as String,
       );
 
+  MotorcyclePart copyWith({int? stock}) => MotorcyclePart(
+        id: id,
+        code: code,
+        name: name,
+        category: category,
+        brand: brand,
+        price: price,
+        stock: stock ?? this.stock,
+        description: description,
+        barcode: barcode,
+        createdBy: createdBy,
+        createdAt: createdAt,
+      );
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'code': code,

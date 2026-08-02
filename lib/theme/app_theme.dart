@@ -44,6 +44,14 @@ class AppColors {
   ];
 }
 
+/// Tamanhos de fonte padrão usados em todas as tabelas do app (peças,
+/// funcionários, ordens de serviço, finanças), pra manter consistência
+/// visual entre as telas.
+class AppTableStyle {
+  static const headerFontSize = 18.0;
+  static const cellFontSize = 17.0;
+}
+
 class AppTheme {
   static ThemeData get light {
     const radius = 10.0; // --radius: 0.625rem

@@ -1,8 +1,35 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
+
+/// Credenciais do cliente OAuth "Desktop app" do Google Cloud Console —
+/// necessárias porque o pacote `google_sign_in` não dá suporte a
+/// Windows/Linux (só Android, iOS, macOS e Web). Para desktop usamos o fluxo
+/// OAuth padrão via navegador (RFC 8252, "loopback"), implementado aqui na
+/// mão com `dart:io`/`url_launcher` — sem depender de pacotes de terceiros
+/// pra isso, já que pacotes como flutter_web_auth_2 arrastam uma dependência
+/// nativa (desktop_webview_window/WebView2) que não é necessária pra esse
+/// fluxo e quebra o build do Windows/Linux se o SDK correspondente não
+/// estiver instalado na máquina que compila.
+///
+/// Gere essas credenciais em https://console.cloud.google.com/apis/credentials
+/// (mesmo projeto do Firebase) → "Criar credenciais" → "ID do cliente OAuth"
+/// → tipo de aplicativo "Aplicativo para computador". Os valores ficam no
+/// `.env` (não versionado — veja `.env.example`), carregado em main.dart.
+class _GoogleDesktopOAuth {
+  static String get clientId => dotenv.get('GOOGLE_OAUTH_CLIENT_ID');
+  static String get clientSecret => dotenv.get('GOOGLE_OAUTH_CLIENT_SECRET');
+  static const redirectPort = 48871;
+  static String get redirectUri => 'http://localhost:$redirectPort';
+}
 
 /// Autenticação real via Firebase Authentication (email/senha + Google),
 /// substituindo o login simulado em SharedPreferences. Mantém a mesma API
@@ -88,6 +115,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(_messageFor(e));
+    }
+  }
+
   Future<void> signup(String email, String password, String name) async {
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
@@ -122,7 +157,15 @@ class AuthProvider extends ChangeNotifier {
         return;
       }
 
-      // Mobile/desktop: google_sign_in 7.x.
+      // O pacote google_sign_in não tem implementação para Windows/Linux
+      // (só Android, iOS, macOS, Web) — nesses dois, o fluxo OAuth via
+      // navegador do sistema é usado no lugar.
+      if (Platform.isWindows || Platform.isLinux) {
+        await _loginWithGoogleDesktop();
+        return;
+      }
+
+      // Android/iOS/macOS: google_sign_in 7.x.
       final google = GoogleSignIn.instance;
       await google.initialize();
       final account = await google.authenticate();
@@ -142,6 +185,99 @@ class AuthProvider extends ChangeNotifier {
         throw Exception('Login com Google cancelado');
       }
       throw Exception('Erro ao fazer login com Google: ${e.description}');
+    }
+  }
+
+  /// Login com Google no Windows/Linux via fluxo OAuth "loopback": abre o
+  /// navegador padrão do sistema, um servidor HTTP local temporário
+  /// (127.0.0.1) recebe o redirect com o código de autorização, e trocamos
+  /// esse código pelos tokens diretamente com o endpoint do Google.
+  Future<void> _loginWithGoogleDesktop() async {
+    final code = await _authorizationCodeViaLoopback();
+    if (code == null) {
+      throw Exception('Login com Google cancelado');
+    }
+
+    final tokenResponse = await http.post(
+      Uri.https('oauth2.googleapis.com', '/token'),
+      body: {
+        'client_id': _GoogleDesktopOAuth.clientId,
+        'client_secret': _GoogleDesktopOAuth.clientSecret,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': _GoogleDesktopOAuth.redirectUri,
+      },
+    );
+    final tokenJson = jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+    final idToken = tokenJson['id_token'] as String?;
+    if (tokenResponse.statusCode != 200 || idToken == null) {
+      throw Exception('Não foi possível obter as credenciais do Google '
+          '(${tokenJson['error_description'] ?? tokenJson['error'] ?? tokenResponse.statusCode}).');
+    }
+
+    final credential = fb.GoogleAuthProvider.credential(
+      idToken: idToken,
+      accessToken: tokenJson['access_token'] as String?,
+    );
+    final cred = await _auth.signInWithCredential(credential);
+    await _saveUserProfile(cred.user);
+  }
+
+  /// Sobe um `HttpServer` em 127.0.0.1 na porta configurada, abre o
+  /// navegador padrão do sistema na tela de login do Google, e aguarda o
+  /// redirect de volta com o `code` de autorização (ou `null` se o usuário
+  /// cancelar, a porta já estiver em uso, ou nada chegar dentro do timeout).
+  Future<String?> _authorizationCodeViaLoopback() async {
+    final HttpServer server;
+    try {
+      server = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        _GoogleDesktopOAuth.redirectPort,
+      );
+    } catch (_) {
+      throw Exception('Não foi possível iniciar o login com Google: a porta '
+          '${_GoogleDesktopOAuth.redirectPort} já está em uso nesta '
+          'máquina. Feche o programa que a estiver usando e tente de novo.');
+    }
+
+    final authUrl = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
+      'response_type': 'code',
+      'client_id': _GoogleDesktopOAuth.clientId,
+      'redirect_uri': _GoogleDesktopOAuth.redirectUri,
+      'scope': 'openid email profile',
+      // Garante um refresh_token e a tela de consentimento sempre que
+      // necessário (evita ficar preso em uma sessão do Google já expirada).
+      'access_type': 'offline',
+      'prompt': 'select_account',
+    });
+
+    try {
+      final launched =
+          await launchUrl(authUrl, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        throw Exception('Não foi possível abrir o navegador do sistema.');
+      }
+
+      final request = await server.first.timeout(
+        const Duration(minutes: 3),
+        onTimeout: () => throw Exception('Login com Google expirou'),
+      );
+
+      const html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+          '<title>GMP Gestor</title></head><body '
+          'style="font-family: sans-serif; text-align: center; '
+          'padding-top: 80px;"><h2>Login concluído.</h2>'
+          '<p>Pode fechar esta aba e voltar para o GMP Gestor.</p>'
+          '</body></html>';
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentType = ContentType.html
+        ..write(html);
+      await request.response.close();
+
+      return request.uri.queryParameters['code'];
+    } finally {
+      await server.close(force: true);
     }
   }
 

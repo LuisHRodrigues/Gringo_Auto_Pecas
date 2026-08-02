@@ -16,6 +16,40 @@ String formatDateTime(String iso) {
   return DateFormat('dd/MM/yyyy HH:mm').format(d);
 }
 
+/// Envolve uma [DataTable] para que ela ocupe toda a largura disponível da
+/// tela (por padrão o DataTable encolhe para o conteúdo, deixando espaço em
+/// branco à direita em telas largas) — mantém a rolagem horizontal para
+/// quando as colunas realmente não couberem. Também padroniza uma fonte
+/// maior e mais legível que o tamanho default do Material.
+Widget appDataTable({
+  required List<DataColumn> columns,
+  required List<DataRow> rows,
+}) {
+  return LayoutBuilder(builder: (context, constraints) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+        child: DataTable(
+          headingTextStyle: const TextStyle(
+              fontSize: AppTableStyle.headerFontSize,
+              fontWeight: FontWeight.w600,
+              color: AppColors.foreground),
+          dataTextStyle: const TextStyle(
+              fontSize: AppTableStyle.cellFontSize,
+              color: AppColors.foreground),
+          columnSpacing: 32,
+          horizontalMargin: 16,
+          dataRowMinHeight: 56,
+          dataRowMaxHeight: 64,
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  });
+}
+
 /// Igual ao [showDialog] padrão, mas com uma transição de entrada/saída mais
 /// suave e deliberada (fade + leve escala), no lugar da transição abrupta.
 Future<T?> showAppDialog<T>({
