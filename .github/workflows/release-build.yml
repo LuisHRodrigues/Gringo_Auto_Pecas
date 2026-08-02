@@ -83,6 +83,57 @@ jobs:
           path: dist\gmp-gestor-setup.exe
           if-no-files-found: error
 
+  android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Restaurar arquivos sensíveis (keystore, google-services.json, .env)
+        # Esses arquivos são gitignored (nunca commitados) e vêm de secrets
+        # do repositório, codificados em base64.
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          echo "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+          echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - run: flutter pub get
+      - run: flutter build apk --release --split-per-abi
+      - run: flutter build appbundle --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
   web:
     name: Build Web
     runs-on: ubuntu-latest
@@ -119,7 +170,7 @@ jobs:
 
   release:
     name: Publicar GitHub Release
-    needs: [windows, web]
+    needs: [windows, android, web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -132,5 +183,6 @@ jobs:
           files: |
             artifacts/windows-release/**
             artifacts/windows-installer/**
+            artifacts/android-release/**
             artifacts/web-release/**
           generate_release_notes: true
