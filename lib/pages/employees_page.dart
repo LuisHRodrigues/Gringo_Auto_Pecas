@@ -271,8 +271,16 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
                           formatters: [phoneInputFormatter])),
                   const SizedBox(width: 16),
                   Expanded(
-                      child:
-                          _input(_email, 'Email *', hint: 'email@exemplo.com')),
+                      child: _input(_email, 'Email *',
+                          hint: 'email@exemplo.com', validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Obrigatório';
+                    }
+                    if (!_emailRegex.hasMatch(v.trim())) {
+                      return 'Email inválido';
+                    }
+                    return null;
+                  })),
                 ]),
                 const SizedBox(height: 16),
                 Row(children: [
@@ -306,10 +314,14 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
     );
   }
 
+  static final _emailRegex =
+      RegExp(r'^[\w.!#$%&*+/=?^`{|}~-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$');
+
   Widget _input(TextEditingController c, String label,
       {String? hint,
       NumericFieldType? numeric,
-      List<TextInputFormatter>? formatters}) {
+      List<TextInputFormatter>? formatters,
+      String? Function(String?)? validator}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -331,7 +343,8 @@ class _EmployeeFormDialogState extends State<_EmployeeFormDialog> {
                 null => null,
               },
           decoration: InputDecoration(hintText: hint),
-          validator: (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
+          validator: validator ??
+              (v) => (v == null || v.isEmpty) ? 'Obrigatório' : null,
         ),
       ],
     );
