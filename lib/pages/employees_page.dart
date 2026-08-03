@@ -140,6 +140,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
                   icon: const Icon(Icons.delete_outline,
                       size: 18, color: AppColors.destructive),
                   onPressed: () async {
+                    final confirmed =
+                        await confirmDelete(context, itemName: e.name);
+                    if (!confirmed || !mounted) return;
                     final data = context.read<DataProvider>();
                     final ok = await runGuarded(
                         context, () => data.deleteEmployee(e.id));

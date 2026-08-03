@@ -238,6 +238,11 @@ class _FinancesPageState extends State<FinancesPage> {
               _reloadTransactions();
             },
             onDelete: (id) async {
+              final storeName =
+                  stores.where((s) => s.id == id).firstOrNull?.name;
+              final confirmed =
+                  await confirmDelete(context, itemName: storeName);
+              if (!confirmed || !mounted) return;
               final data = context.read<DataProvider>();
               final ok = await runGuarded(context, () => data.deleteStore(id));
               if (!ok || !mounted) return;
@@ -338,7 +343,11 @@ class _FinancesPageState extends State<FinancesPage> {
           const SizedBox(height: 24),
 
           // Transações recentes
-          _RecentTransactions(transactions: _filtered),
+          _RecentTransactions(
+            transactions: _filtered,
+            onEdit: _openEditTransaction,
+            onDelete: _deleteTransaction,
+          ),
         ],
       ),
     );
@@ -363,6 +372,37 @@ class _FinancesPageState extends State<FinancesPage> {
         },
       ),
     );
+  }
+
+  void _openEditTransaction(Transaction editing) {
+    showAppDialog(
+      context: context,
+      builder: (_) => _TransactionDialog(
+        storeId: _activeStore,
+        editing: editing,
+        onSubmit: (t) async {
+          final data = context.read<DataProvider>();
+          final ok = await runGuarded(
+              context, () => data.updateTransaction(_activeStore, t));
+          if (!ok || !mounted) return;
+          _reloadTransactions();
+          _toast(
+              '${t.type == 'entrada' ? 'Receita' : 'Despesa'} atualizada com sucesso!');
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteTransaction(Transaction t) async {
+    final confirmed = await confirmDelete(context, itemName: t.description);
+    if (!confirmed || !mounted) return;
+    final data = context.read<DataProvider>();
+    final ok = await runGuarded(context, () => data.deleteTransaction(t.id));
+    if (ok && mounted) {
+      _reloadTransactions();
+      _toast(
+          '${t.type == 'entrada' ? 'Receita' : 'Despesa'} removida com sucesso!');
+    }
   }
 
   void _openCategories() {
@@ -991,8 +1031,14 @@ class _BarChartView extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _RecentTransactions extends StatelessWidget {
-  const _RecentTransactions({required this.transactions});
+  const _RecentTransactions({
+    required this.transactions,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final List<Transaction> transactions;
+  final ValueChanged<Transaction> onEdit;
+  final ValueChanged<Transaction> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1021,10 +1067,15 @@ class _RecentTransactions extends StatelessWidget {
               DataColumn(label: Text('Categoria')),
               DataColumn(label: Text('Descrição')),
               DataColumn(label: Text('Valor'), numeric: true),
+              DataColumn(label: Text('Ações')),
             ],
             rows: rows.map((t) {
               final isEntrada = t.type == 'entrada';
               final color = isEntrada ? AppColors.green600 : AppColors.red600;
+              // Transações derivadas de OS concluídas ('os-...') não são
+              // documentos próprios no Firestore — editar/excluir deve ser
+              // feito na ordem de serviço de origem.
+              final isSynthetic = t.id.startsWith('os-');
               return DataRow(cells: [
                 DataCell(Text(formatDate(t.date))),
                 DataCell(Container(
@@ -1062,6 +1113,24 @@ class _RecentTransactions extends StatelessWidget {
                   '${isEntrada ? '+' : '-'}${formatCurrency(t.amount)}',
                   style: TextStyle(fontWeight: FontWeight.w500, color: color),
                 )),
+                DataCell(isSynthetic
+                    ? Tooltip(
+                        message:
+                            'Gerada por uma OS concluída — edite/exclua por lá.',
+                        child: Icon(Icons.link,
+                            size: 18, color: AppColors.mutedForeground),
+                      )
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          onPressed: () => onEdit(t),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              size: 18, color: AppColors.destructive),
+                          onPressed: () => onDelete(t),
+                        ),
+                      ])),
               ]);
             }).toList(),
           ),
@@ -1107,20 +1176,31 @@ List<List<String>> _defaultCatsFor(String type, String storeId) {
 }
 
 class _TransactionDialog extends StatefulWidget {
-  const _TransactionDialog({required this.storeId, required this.onSubmit});
+  const _TransactionDialog({
+    required this.storeId,
+    required this.onSubmit,
+    this.editing,
+  });
   final String storeId;
   final ValueChanged<Transaction> onSubmit;
+  final Transaction? editing;
 
   @override
   State<_TransactionDialog> createState() => _TransactionDialogState();
 }
 
 class _TransactionDialogState extends State<_TransactionDialog> {
-  String _type = 'entrada';
-  String? _category;
-  final _description = TextEditingController();
-  final _amount = TextEditingController();
-  DateTime _date = DateTime.now();
+  late String _type = widget.editing?.type ?? 'entrada';
+  late String? _category = widget.editing?.category;
+  late final _description =
+      TextEditingController(text: widget.editing?.description ?? '');
+  late final _amount = TextEditingController(
+      text: widget.editing != null
+          ? formatCurrencyInput(widget.editing!.amount)
+          : '');
+  late DateTime _date = widget.editing != null
+      ? DateTime.parse(widget.editing!.date)
+      : DateTime.now();
 
   @override
   void dispose() {
@@ -1150,7 +1230,8 @@ class _TransactionDialogState extends State<_TransactionDialog> {
     final dateStr =
         '${_date.year}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}';
     widget.onSubmit(Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.editing?.id ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       type: _type,
       category: _category!,
       description: _description.text,
@@ -1208,7 +1289,8 @@ class _TransactionDialogState extends State<_TransactionDialog> {
     // tipo), zera para evitar erro do DropdownButton.
     final selected = items.any((i) => i.value == _category) ? _category : null;
     return AlertDialog(
-      title: const Text('Adicionar Transação'),
+      title: Text(
+          widget.editing != null ? 'Editar Transação' : 'Adicionar Transação'),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -1316,7 +1398,9 @@ class _TransactionDialogState extends State<_TransactionDialog> {
         OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancelar')),
-        ElevatedButton(onPressed: _submit, child: const Text('Adicionar')),
+        ElevatedButton(
+            onPressed: _submit,
+            child: Text(widget.editing != null ? 'Atualizar' : 'Adicionar')),
       ],
     );
   }
@@ -1650,11 +1734,16 @@ class _CategoryManagerDialogState extends State<_CategoryManagerDialog> {
                               tooltip: 'Remover',
                               icon: const Icon(Icons.delete_outline,
                                   size: 18, color: AppColors.destructive),
-                              onPressed: () => runGuarded(
-                                  context,
-                                  () => context
-                                      .read<DataProvider>()
-                                      .deleteCategory(c.id)),
+                              onPressed: () async {
+                                final confirmed = await confirmDelete(context,
+                                    itemName: c.name);
+                                if (!confirmed || !context.mounted) return;
+                                await runGuarded(
+                                    context,
+                                    () => context
+                                        .read<DataProvider>()
+                                        .deleteCategory(c.id));
+                              },
                             ),
                           ],
                         ),

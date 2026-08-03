@@ -10,20 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 
-/// Credenciais do cliente OAuth "Desktop app" do Google Cloud Console —
-/// necessárias porque o pacote `google_sign_in` não dá suporte a
-/// Windows/Linux (só Android, iOS, macOS e Web). Para desktop usamos o fluxo
-/// OAuth padrão via navegador (RFC 8252, "loopback"), implementado aqui na
-/// mão com `dart:io`/`url_launcher` — sem depender de pacotes de terceiros
-/// pra isso, já que pacotes como flutter_web_auth_2 arrastam uma dependência
-/// nativa (desktop_webview_window/WebView2) que não é necessária pra esse
-/// fluxo e quebra o build do Windows/Linux se o SDK correspondente não
-/// estiver instalado na máquina que compila.
-///
-/// Gere essas credenciais em https://console.cloud.google.com/apis/credentials
-/// (mesmo projeto do Firebase) → "Criar credenciais" → "ID do cliente OAuth"
-/// → tipo de aplicativo "Aplicativo para computador". Os valores ficam no
-/// `.env` (não versionado — veja `.env.example`), carregado em main.dart.
+
 class _GoogleDesktopOAuth {
   static String get clientId => dotenv.get('GOOGLE_OAUTH_CLIENT_ID');
   static String get clientSecret => dotenv.get('GOOGLE_OAUTH_CLIENT_SECRET');
@@ -31,10 +18,7 @@ class _GoogleDesktopOAuth {
   static String get redirectUri => 'http://localhost:$redirectPort';
 }
 
-/// Autenticação real via Firebase Authentication (email/senha + Google),
-/// substituindo o login simulado em SharedPreferences. Mantém a mesma API
-/// pública (user / isLoading / isLoggedIn / login / signup / loginWithGoogle /
-/// logout) usada pelas páginas.
+
 class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     // O estado começa carregando até o Firebase emitir o primeiro evento.

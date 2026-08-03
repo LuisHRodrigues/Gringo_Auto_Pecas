@@ -233,6 +233,9 @@ class _ServiceOrdersPageState extends State<ServiceOrdersPage> {
                   icon: const Icon(Icons.delete_outline,
                       size: 18, color: AppColors.destructive),
                   onPressed: () async {
+                    final confirmed = await confirmDelete(context,
+                        itemName: 'OS #${o.orderNumber}');
+                    if (!confirmed || !mounted) return;
                     final data = context.read<DataProvider>();
                     final ok =
                         await runGuarded(context, () => data.deleteOrder(o.id));

@@ -120,9 +120,11 @@ class _PartsManagementPageState extends State<PartsManagementPage> {
             parts: filtered,
             onEdit: (p) => _openForm(editing: p),
             onAdjustStock: _adjustStock,
-            onDelete: (id) async {
+            onDelete: (p) async {
+              final confirmed = await confirmDelete(context, itemName: p.name);
+              if (!confirmed || !mounted) return;
               final data = context.read<DataProvider>();
-              final ok = await runGuarded(context, () => data.deletePart(id));
+              final ok = await runGuarded(context, () => data.deletePart(p.id));
               if (ok && mounted) _toast('Peça removida com sucesso!');
             },
           ),
@@ -393,7 +395,7 @@ class _PartsTable extends StatelessWidget {
   });
   final List<MotorcyclePart> parts;
   final void Function(MotorcyclePart) onEdit;
-  final void Function(String) onDelete;
+  final void Function(MotorcyclePart) onDelete;
   final void Function(MotorcyclePart, int) onAdjustStock;
 
   static const _headerStyle = TextStyle(
@@ -533,7 +535,7 @@ class _PartsTable extends StatelessWidget {
                             _actionButton(
                                 icon: Icons.delete_outline,
                                 color: AppColors.destructive,
-                                onPressed: () => onDelete(p.id)),
+                                onPressed: () => onDelete(p)),
                           ]),
                         ),
                       ],

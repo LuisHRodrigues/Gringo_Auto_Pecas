@@ -246,6 +246,15 @@ class DataProvider extends ChangeNotifier {
         'storeId': storeId,
       });
 
+  Future<void> updateTransaction(String storeId, Transaction t) =>
+      _transactionsRef.doc(t.id).set({
+        ...t.toJson(),
+        'storeId': storeId,
+      });
+
+  Future<void> deleteTransaction(String id) =>
+      _transactionsRef.doc(id).delete();
+
   // ---------------- Categorias personalizadas ----------------
   void _listenCategories() {
     _subs.add(_categoriesRef.snapshots().listen((snap) {

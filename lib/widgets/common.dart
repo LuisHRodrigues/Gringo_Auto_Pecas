@@ -105,6 +105,40 @@ Future<bool> runGuarded(
   }
 }
 
+/// Pede confirmação antes de uma exclusão. Retorna `true` só se o usuário
+/// confirmar explicitamente (fechar o diálogo sem escolher conta como não).
+Future<bool> confirmDelete(
+  BuildContext context, {
+  String title = 'Confirmar exclusão',
+  String? itemName,
+}) async {
+  final message = itemName != null
+      ? 'Tem certeza que deseja excluir "$itemName"? Essa ação não pode ser desfeita.'
+      : 'Tem certeza que deseja excluir? Essa ação não pode ser desfeita.';
+  final result = await showAppDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        OutlinedButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.destructive,
+            foregroundColor: AppColors.destructiveForeground,
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Excluir'),
+        ),
+      ],
+    ),
+  );
+  return result ?? false;
+}
+
 enum BadgeVariant { primary, secondary, outline, destructive, success, warning }
 
 /// Equivalente ao componente Badge do shadcn/ui.
