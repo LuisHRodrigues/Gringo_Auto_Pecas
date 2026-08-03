@@ -64,15 +64,6 @@ jobs:
           Copy-Item "$redistDir\msvcp140*.dll" -Destination build\windows\x64\runner\Release\
           Copy-Item "$redistDir\vcruntime140*.dll" -Destination build\windows\x64\runner\Release\
 
-      - name: Compactar build Windows
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath gmp-gestor-windows.zip
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-release
-          path: gmp-gestor-windows.zip
-          if-no-files-found: error
-
       - name: Gerar instalador .exe com Inno Setup
         # O Inno Setup 6 já vem instalado no runner windows-latest do GitHub
         # Actions (image "windows-2022"/"windows-2025"). Não é necessário
@@ -130,15 +121,15 @@ jobs:
           EOF
 
       - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi
-      - run: flutter build appbundle --release
+      - run: flutter build apk --release
+
+      - name: Renomear APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/gmp-gestor.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: android-release
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            build/app/outputs/bundle/release/*.aab
+          path: build/app/outputs/flutter-apk/gmp-gestor.apk
           if-no-files-found: error
 
   web:
@@ -191,7 +182,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/windows-release/**
             artifacts/windows-installer/**
             artifacts/android-release/**
             artifacts/web-release/**

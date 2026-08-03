@@ -186,10 +186,12 @@ Dois workflows em `.github/workflows/`:
 - **`release-build.yml`**: dispara apenas quando uma tag `v*.*.*` é enviada
   (ex.: `v1.2.0`). Builda e publica um GitHub Release com:
   - **Windows**: build de release (`flutter build windows`), com as DLLs do
-    Visual C++ Redistributable copiadas para o app ficar autocontido,
-    compactado em `gmp-gestor-windows.zip`, **e** um instalador
-    `gmp-gestor-setup.exe` gerado com **Inno Setup**
+    Visual C++ Redistributable copiadas para o app ficar autocontido, e um
+    instalador `gmp-gestor-setup.exe` gerado com **Inno Setup**
     (`windows/installer/motogest.iss`), usando a versão da tag.
+  - **Android**: build de release (`flutter build apk`), um único APK
+    universal (`gmp-gestor.apk`) — sem AAB nem split por ABI, já que o app
+    não é distribuído pela Play Store.
   - **Web**: build de release (`flutter build web`), compactado em
     `gmp-gestor-web.zip`.
 
