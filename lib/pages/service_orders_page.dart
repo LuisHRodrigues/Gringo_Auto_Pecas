@@ -831,8 +831,7 @@ class _OrderDetailsDialog extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 15, color: AppColors.mutedForeground)),
         Text(v,
-            style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -845,8 +844,7 @@ class _OrderDetailsDialog extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 15, color: AppColors.mutedForeground)),
         Text(v,
-            style:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ],
     );
   }
