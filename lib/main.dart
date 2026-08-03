@@ -67,9 +67,9 @@ class _Root extends StatelessWidget {
       );
     }
     if (!auth.isLoggedIn) return const LoginPage();
-    // A confirmação de email só é exibida logo após criar a conta nesta
-    // sessão — não bloqueia logins futuros de contas ainda não verificadas.
-    if (auth.justSignedUp && !auth.user!.emailVerified) {
+    // Bloqueia o acesso ao sistema enquanto o email não for confirmado,
+    // tanto logo após o cadastro quanto em logins futuros.
+    if (!auth.user!.emailVerified) {
       return const VerifyEmailPage();
     }
     return const HomePage();
